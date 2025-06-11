@@ -30,7 +30,6 @@
     {
       "resources": [
         "panel_icon.svg",
-        "chart.min.js",
         "placeholder.png"
       ],
       "matches": [

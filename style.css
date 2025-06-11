@@ -105,29 +105,39 @@
     position: relative; /* Para os modais internos */
 }
 .kanban-header {
-    padding: 10px 24px;
+    padding: 0 24px;
     background-color: #008069;
     color: white;
     display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    flex-shrink: 0;
-}
-.kanban-header-top-row {
-    display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
+    justify-content: space-between;
+    height: 60px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    position: sticky;
+    top: 0;
+    z-index: 10;
 }
-.kanban-header-top-row h2 {
+.kanban-title {
     margin: 0;
-    font-size: 20px;
+    font-size: 16px;
+    font-weight: 300;
 }
-.kanban-header-top-row .close-btn {
+.kanban-indicators {
+    display: flex;
+    gap: 15px;
+    font-size: 13px;
+    align-items: center;
+}
+.kanban-indicators span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.kanban-header .close-btn {
     background: none;
     border: none;
     color: white;
-    font-size: 28px;
+    font-size: 24px;
     cursor: pointer;
 }
 /* --- ESTILOS DO FORMULÁRIO NA SIDEBAR --- */
@@ -152,6 +162,7 @@
 .kanban-column h3 { position: relative; padding: 12px 40px 12px 16px; margin: 0; font-size: 16px; font-weight: 600; color: #3b4a54; border-radius: 8px 8px 0 0; cursor: default; }
 .kanban-column:not(:first-child) h3:hover { cursor: pointer; background-color: rgba(0,0,0,0.04); }
 .kanban-column h3[contenteditable="true"] { background-color: white; color: black; outline: 2px solid #00a884; cursor: text; }
+.column-total { font-size: 13px; color: #444; padding: 4px 16px; }
 .kanban-items { padding: 8px; flex-grow: 1; overflow-y: auto; min-height: 50px; }
 .add-column-container { width: 320px; flex-shrink: 0; }
 .add-column-btn { width: 100%; padding: 12px; background-color: rgba(0, 0, 0, 0.05); border: 2px dashed #a0aec0; border-radius: 8px; color: #4a5568; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; }

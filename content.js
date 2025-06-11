@@ -180,6 +180,15 @@ function createColumnElement(columnData, crmData) {
         column.addEventListener('dragover', handleDragOver);
         column.addEventListener('drop', handleDrop);
     }
+    const totalEl = document.createElement('div');
+    totalEl.className = 'column-total';
+    if (columnData.title !== 'Tarefas Pendentes') {
+        let totalValor = 0;
+        (columnData.clients || []).forEach(client => {
+            (client.deals || []).forEach(deal => { totalValor += deal.valor || 0; });
+        });
+        totalEl.textContent = `💵 Total: ${totalValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+    }
     const itemsContainer = document.createElement('div');
     itemsContainer.className = 'kanban-items';
     if (columnData.tasks) {
@@ -189,10 +198,50 @@ function createColumnElement(columnData, crmData) {
         columnData.clients.forEach(client => itemsContainer.appendChild(createClientCardElement(client)));
     }
     column.appendChild(title);
+    if (columnData.title !== 'Tarefas Pendentes') column.appendChild(totalEl);
     column.appendChild(itemsContainer);
     return column;
 }
-async function updateDashboard() { const dashboardCanvas = document.getElementById('financial-chart'); if (!dashboardCanvas) return; const ctx = dashboardCanvas.getContext('2d'); const crmData = await carregarDados("kanban_data"); if (!crmData || !crmData.columns) return; const labels = []; const datasets = { valor: [], mensalidade: [], gordurinha: [] }; crmData.columns.forEach(column => { if (column.title === 'Tarefas Pendentes') return; labels.push(column.title); let totalValor = 0; let totalMensalidade = 0; let totalGordurinha = 0; (column.clients || []).forEach(client => { (client.deals || []).forEach(deal => { totalValor += deal.valor || 0; totalMensalidade += deal.mensalidade || 0; totalGordurinha += deal.gordurinha || 0; }); }); datasets.valor.push(totalValor); datasets.mensalidade.push(totalMensalidade); datasets.gordurinha.push(totalGordurinha); }); if (window.myFinancialChart) window.myFinancialChart.destroy(); window.myFinancialChart = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [ { label: 'Adesão (R$)', data: datasets.valor, backgroundColor: 'rgba(75, 192, 192, 0.8)' }, { label: 'Mensalidade (R$)', data: datasets.mensalidade, backgroundColor: 'rgba(54, 162, 235, 0.8)' }, { label: 'Gordurinha (R$)', data: datasets.gordurinha, backgroundColor: 'rgba(255, 206, 86, 0.8)' } ] }, options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: 'white' } }, x: { ticks: { color: 'white' } } }, plugins: { legend: { labels: { color: 'white' } } } } }); }
+async function updateColumnTotals(crmData) {
+    if (!crmData) crmData = await carregarDados('kanban_data');
+    const columns = document.querySelectorAll('.kanban-column');
+    columns.forEach(colEl => {
+        const colData = crmData.columns.find(c => c.title === colEl.dataset.id);
+        if (!colData || colData.title === 'Tarefas Pendentes') return;
+        let totalValor = 0;
+        (colData.clients || []).forEach(client => {
+            (client.deals || []).forEach(deal => { totalValor += deal.valor || 0; });
+        });
+        const totalEl = colEl.querySelector('.column-total');
+        if (totalEl) {
+            totalEl.textContent = `\uD83D\uDCB5 Total: ${totalValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+        }
+    });
+}
+
+async function updateDashboard() {
+    const crmData = await carregarDados("kanban_data");
+    if (!crmData || !crmData.columns) return;
+    let totalDeals = 0;
+    let totalTasks = 0;
+    let totalValor = 0;
+    crmData.columns.forEach(column => {
+        if (column.title === 'Tarefas Pendentes') {
+            totalTasks += (column.tasks || []).length;
+        }
+        (column.clients || []).forEach(client => {
+            totalDeals += (client.deals || []).length;
+            (client.deals || []).forEach(deal => { totalValor += deal.valor || 0; });
+        });
+    });
+    const dealsEl = document.querySelector('#indicator-deals strong');
+    const tasksEl = document.querySelector('#indicator-tasks strong');
+    const valueEl = document.querySelector('#indicator-value strong');
+    if (dealsEl) dealsEl.textContent = totalDeals;
+    if (tasksEl) tasksEl.textContent = totalTasks;
+    if (valueEl) valueEl.textContent = totalValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    await updateColumnTotals(crmData);
+}
 async function renderKanbanBoard() {
     const boardContainer = document.querySelector('.kanban-board');
     if (!boardContainer) return;
@@ -366,8 +415,13 @@ function buildUI() {
         <div id="kanban-panel-container">
             <div id="kanban-panel-content">
                 <div class="kanban-header">
-                    <div class="kanban-header-top-row"><h2>CRM Kanban</h2><button class="close-btn">&times;</button></div>
-                    <div id="kanban-dashboard"><canvas id="financial-chart"></canvas></div>
+                    <h2 class="kanban-title">Wesley — Consultor Especializado em Proteção Veicular</h2>
+                    <div class="kanban-indicators">
+                        <span id="indicator-deals">Negócios: <strong>0</strong></span>
+                        <span id="indicator-tasks">Tarefas: <strong>0</strong></span>
+                        <span id="indicator-value">💰 <strong>R$0,00</strong></span>
+                    </div>
+                    <button class="close-btn">&times;</button>
                 </div>
                 <div class="kanban-board"></div>
             </div>
@@ -486,21 +540,6 @@ function buildUI() {
     console.log("UI do CRM injetada e eventos configurados com sucesso!");
 }
 
-function loadScript(src, callback) {
-    const existingScript = document.querySelector(`script[src="${src}"]`);
-    if (existingScript) {
-        if (callback) callback();
-        return;
-    }
-    const script = document.createElement('script');
-    script.src = src;
-    script.onload = callback;
-    document.head.appendChild(script);
-}
-
 window.addEventListener('load', () => {
-    loadScript(chrome.runtime.getURL('chart.min.js'), () => {
-        console.log('Chart.js carregado.');
-        setTimeout(buildUI, 2000);
-    });
+    setTimeout(buildUI, 2000);
 });
