@@ -53,11 +53,91 @@ async function handleColumnRename(titleElement, oldName) { if (oldName === "Tare
 async function handleColumnDelete(columnName) { if (columnName === "Tarefas Pendentes") { alert("A coluna de tarefas não pode ser excluída."); return; } const crmData = await carregarDados("kanban_data"); const columnToDelete = crmData.columns.find(col => col.title === columnName); if (columnToDelete && (columnToDelete.clients?.length > 0 || columnToDelete.tasks?.length > 0)) { alert("Apenas colunas vazias podem ser excluídas."); return; } if (confirm(`Tem certeza que deseja excluir a coluna "${columnName}"?`)) { crmData.columns = crmData.columns.filter(col => col.title !== columnName); await salvarDados("kanban_data", crmData); await renderKanbanBoard(); } }
 
 // --- FUNÇÕES DE RENDERIZAÇÃO ---
-function createClientCardElement(clientData) { const card = document.createElement('div'); card.className = 'kanban-card'; card.id = clientData.id; card.draggable = true; const tagsHTML = (clientData.tags || []).map(tag => `<span class="card-tag">${tag}</span>`).join(''); const dealsHTML = (clientData.deals || []).map(deal => `<div class="deal-item"><strong>${deal.title || 'Negócio'}</strong> (${deal.creationDate})<br>Adesão: R$${(deal.valor || 0).toFixed(2)} | Mensal: R$${(deal.mensalidade || 0).toFixed(2)}</div>`).join(''); card.innerHTML = `<div class="card-header"><div class="card-info"><h4>${clientData.name || 'Sem Nome'}</h4><p>${clientData.phone || ''}</p></div></div><div class="card-tags">${tagsHTML}</div>${dealsHTML ? `<div class="card-deals-container">${dealsHTML}</div>` : ''}`; card.addEventListener('dragstart', handleDragStart); card.addEventListener('dragend', handleDragEnd); return card; }
-function createTaskCardElement(taskData) { const card = document.createElement('div'); card.className = 'kanban-card task-card'; card.id = taskData.id; card.dataset.taskId = taskData.id; card.draggable = false; card.innerHTML = `<button class="delete-task-btn" title="Concluir/Excluir Tarefa">&times;</button><div class="card-highlight">${taskData.highlight}</div><div class="card-notes">${taskData.notes}</div><div class="card-creation-date">Criado em: ${taskData.creationDate}</div>`; return card; }
+function createClientCardElement(clientData) { const card = document.createElement('div'); card.className = 'kanban-card'; card.id = clientData.id; card.draggable = true; const tagsHTML = (clientData.tags || []).map(tag => `<span class="card-tag">${tag}</span>`).join(''); const dealsHTML = (clientData.deals || []).map(deal => `<div class="deal-item"><strong>${deal.title || 'Negócio'}</strong> (${deal.creationDate})<br>Adesão: R$${(deal.valor || 0).toFixed(2)} | Mensal: R$${(deal.mensalidade || 0).toFixed(2)}</div>`).join(''); card.innerHTML = `<div class="card-header"><div class="card-info"><h4>${clientData.name || 'Sem Nome'}</h4><p>${clientData.phone || ''}</p></div></div><div class="card-tags">${tagsHTML}</div>${dealsHTML ? `<div class="card-deals-container">${dealsHTML}</div>` : ''}`; card.addEventListener('dragstart', handleDragStart); card.addEventListener('dragend', handleDragEnd); card.addEventListener('dblclick', () => openCardEditPanel(clientData.id, 'client')); return card; }
+function createTaskCardElement(taskData) { const card = document.createElement('div'); card.className = 'kanban-card task-card'; card.id = taskData.id; card.dataset.taskId = taskData.id; card.draggable = false; card.innerHTML = `<button class="delete-task-btn" title="Concluir/Excluir Tarefa">&times;</button><div class="card-highlight">${taskData.highlight}</div><div class="card-notes">${taskData.notes}</div><div class="card-creation-date">Criado em: ${taskData.creationDate}</div>`; card.addEventListener('dblclick', () => openCardEditPanel(taskData.id, 'task')); return card; }
 function createColumnElement(columnData) { const column = document.createElement('div'); column.className = 'kanban-column'; column.dataset.id = columnData.title; if (columnData.title === 'Tarefas Pendentes') column.id = 'task-column'; const title = document.createElement('h3'); title.innerText = columnData.title; if (columnData.title !== 'Tarefas Pendentes') { const deleteBtn = document.createElement('button'); deleteBtn.className = 'delete-column-btn'; deleteBtn.innerHTML = '&times;'; deleteBtn.title = 'Excluir Coluna'; deleteBtn.onclick = (e) => { e.stopPropagation(); handleColumnDelete(columnData.title); }; title.appendChild(deleteBtn); title.addEventListener('dblclick', () => handleColumnRename(title, columnData.title)); column.addEventListener('dragover', handleDragOver); column.addEventListener('drop', handleDrop); } const itemsContainer = document.createElement('div'); itemsContainer.className = 'kanban-items'; if (columnData.tasks) { columnData.tasks.forEach(task => itemsContainer.appendChild(createTaskCardElement(task))); } if (columnData.clients) { columnData.clients.forEach(client => itemsContainer.appendChild(createClientCardElement(client))); } column.appendChild(title); column.appendChild(itemsContainer); return column; }
 async function updateDashboard() { const dashboardCanvas = document.getElementById('financial-chart'); if (!dashboardCanvas) return; const ctx = dashboardCanvas.getContext('2d'); const crmData = await carregarDados("kanban_data"); if (!crmData || !crmData.columns) return; const labels = []; const datasets = { valor: [], mensalidade: [], gordurinha: [] }; crmData.columns.forEach(column => { if (column.title === 'Tarefas Pendentes') return; labels.push(column.title); let totalValor = 0; let totalMensalidade = 0; let totalGordurinha = 0; (column.clients || []).forEach(client => { (client.deals || []).forEach(deal => { totalValor += deal.valor || 0; totalMensalidade += deal.mensalidade || 0; totalGordurinha += deal.gordurinha || 0; }); }); datasets.valor.push(totalValor); datasets.mensalidade.push(totalMensalidade); datasets.gordurinha.push(totalGordurinha); }); if (window.myFinancialChart) window.myFinancialChart.destroy(); window.myFinancialChart = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [ { label: 'Adesão (R$)', data: datasets.valor, backgroundColor: 'rgba(75, 192, 192, 0.8)' }, { label: 'Mensalidade (R$)', data: datasets.mensalidade, backgroundColor: 'rgba(54, 162, 235, 0.8)' }, { label: 'Gordurinha (R$)', data: datasets.gordurinha, backgroundColor: 'rgba(255, 206, 86, 0.8)' } ] }, options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: 'white' } }, x: { ticks: { color: 'white' } } }, plugins: { legend: { labels: { color: 'white' } } } } }); }
 async function renderKanbanBoard() { const boardContainer = document.querySelector('.kanban-board'); if (!boardContainer) return; boardContainer.innerHTML = '<p>Carregando...</p>'; let crmData = await carregarDados("kanban_data"); if (!crmData || !crmData.columns) { crmData = { clients: {}, columns: [{ title: 'Tarefas Pendentes', tasks: [] }, { title: 'Em Negociação', clients: [] }] }; await salvarDados("kanban_data", crmData); } boardContainer.innerHTML = ''; crmData.columns.forEach(columnData => boardContainer.appendChild(createColumnElement(columnData))); const addColumnContainer = document.createElement('div'); addColumnContainer.className = 'add-column-container'; addColumnContainer.innerHTML = `<button id="add-new-column-btn" class="add-column-btn">+ Adicionar Nova Coluna</button>`; boardContainer.appendChild(addColumnContainer); document.getElementById('add-new-column-btn').onclick = handleAddNewColumn; await updateDashboard(); }
+async function openCardEditPanel(id, type) {
+    const panel = document.getElementById('card-edit-panel');
+    panel.dataset.cardId = id;
+    panel.dataset.cardType = type;
+    const crmData = await carregarDados('kanban_data');
+    let data;
+    if (type === 'task') {
+        for (const col of crmData.columns || []) {
+            const t = (col.tasks || []).find(tsk => tsk.id === id);
+            if (t) { data = t; break; }
+        }
+        document.getElementById('edit-origin').parentElement.style.display = 'none';
+        document.querySelector('#edit-panel-tags').style.display = 'none';
+        document.getElementById('edit-valor').parentElement.style.display = 'none';
+        document.getElementById('edit-name').value = data?.highlight || '';
+        document.getElementById('edit-phone').value = data?.notes || '';
+    } else {
+        data = crmData.clients?.[id];
+        if (!data) {
+            for (const col of crmData.columns || []) {
+                data = (col.clients || []).find(c => c.id === id);
+                if (data) break;
+            }
+        }
+        document.getElementById('edit-origin').parentElement.style.display = '';
+        document.querySelector('#edit-panel-tags').style.display = '';
+        document.getElementById('edit-valor').parentElement.style.display = '';
+        document.getElementById('edit-name').value = data?.name || '';
+        document.getElementById('edit-phone').value = data?.phone || '';
+        document.getElementById('edit-origin').value = data?.origin || '';
+        document.querySelectorAll('input[name="edit-tags"]').forEach(cb => {
+            cb.checked = (data?.tags || []).includes(cb.value);
+        });
+        document.getElementById('edit-valor').value = data?.deals?.[0]?.valor || '';
+    }
+    panel.classList.add('visible');
+}
+
+async function saveCardEdit() {
+    const panel = document.getElementById('card-edit-panel');
+    const id = panel.dataset.cardId;
+    const type = panel.dataset.cardType;
+    const crmData = await carregarDados('kanban_data');
+    if (type === 'task') {
+        for (const col of crmData.columns || []) {
+            const t = (col.tasks || []).find(tsk => tsk.id === id);
+            if (t) {
+                t.highlight = document.getElementById('edit-name').value;
+                t.notes = document.getElementById('edit-phone').value;
+                break;
+            }
+        }
+    } else {
+        let client = crmData.clients?.[id];
+        if (!client) {
+            for (const col of crmData.columns || []) {
+                client = (col.clients || []).find(c => c.id === id);
+                if (client) break;
+            }
+        }
+        if (client) {
+            client.name = document.getElementById('edit-name').value;
+            client.phone = document.getElementById('edit-phone').value;
+            client.origin = document.getElementById('edit-origin').value;
+            client.tags = Array.from(document.querySelectorAll('input[name="edit-tags"]:checked')).map(cb => cb.value);
+            const valor = parseFloat(document.getElementById('edit-valor').value) || 0;
+            if (client.deals && client.deals[0]) client.deals[0].valor = valor;
+        }
+    }
+    await salvarDados('kanban_data', crmData);
+    closeCardEditPanel();
+    await renderKanbanBoard();
+}
+
+function closeCardEditPanel() {
+    const panel = document.getElementById('card-edit-panel');
+    panel.classList.remove('visible');
+    panel.dataset.cardId = '';
+    panel.dataset.cardType = '';
+}
 // --- FUNÇÃO PRINCIPAL QUE CONSTRÓI A UI ---
 function buildUI() {
     if (document.getElementById('crm-fab-container')) return;
@@ -92,6 +172,17 @@ function buildUI() {
                 </div>
             </div>
         </div>
+        <div id="card-edit-panel" class="card-edit-panel">
+            <div class="sidebar-header"><button class="close-btn">&times;</button><h2>Editar Card</h2></div>
+            <div class="sidebar-content">
+                <div class="form-group"><label for="edit-name">Nome</label><input type="text" id="edit-name"></div>
+                <div class="form-group"><label for="edit-phone">Telefone</label><input type="text" id="edit-phone"></div>
+                <div class="form-group"><label for="edit-origin">Origem</label><select id="edit-origin"><option value="">Selecione...</option><option value="Indicação">Indicação</option><option value="Já é cliente">Já é cliente</option><option value="Captação">Captação</option></select></div>
+                <div id="edit-panel-tags" class="fieldset"><legend>Categoria (Tags)</legend><div class="tags-group"><label><input type="checkbox" name="edit-tags" value="Em negociação"> Em negociação</label><label><input type="checkbox" name="edit-tags" value="Fechou"> Fechou</label><label><input type="checkbox" name="edit-tags" value="Esfriou"> Esfriou</label></div></div>
+                <div class="form-group"><label for="edit-valor">Valor</label><input type="number" id="edit-valor"></div>
+            </div>
+            <button id="save-edit-btn" class="action-button">Salvar alterações</button>
+        </div>
         <div id="kanban-panel-container">
             <div id="kanban-panel-content">
                 <div class="kanban-header">
@@ -115,6 +206,8 @@ function buildUI() {
     kanbanBtn.onclick = () => { renderKanbanBoard(); document.getElementById('kanban-panel-container').classList.add('visible'); };
     document.querySelector('#crm-sidebar .close-btn').onclick = () => { document.getElementById('crm-sidebar').classList.remove('visible'); };
     document.querySelector('#kanban-panel-container .close-btn').onclick = () => { document.getElementById('kanban-panel-container').classList.remove('visible'); };
+    document.querySelector('#card-edit-panel .close-btn').onclick = closeCardEditPanel;
+    document.getElementById('save-edit-btn').onclick = saveCardEdit;
     document.getElementById('crm-client-origin').onchange = (e) => { document.getElementById('crm-indicacao-details').style.display = (e.target.value === 'Indicação') ? 'block' : 'none'; };
     
     document.getElementById('save-client-btn').onclick = async () => {
