@@ -190,7 +190,59 @@
 .crm-modal-footer button:hover { background-color: #008069; }
 
 /* --- Painel de Edição de Cards --- */
-#card-edit-panel { position: fixed; top: 0; right: 0; width: 300px; height: 100%; background: #fff; box-shadow: -2px 0 8px rgba(0,0,0,0.1); padding: 20px; transform: translateX(100%); transition: transform 0.3s ease; z-index: 2001; display: flex; flex-direction: column; }
-#card-edit-panel.visible { transform: translateX(0); }
-#card-edit-panel .form-group input, #card-edit-panel .form-group select { border-radius: 6px; }
-#save-edit-btn { position: absolute; bottom: 20px; left: 20px; right: 20px; width: calc(100% - 40px); }
+#card-edit-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 380px;
+    height: 100%;
+    background-color: #f0f2f5;
+    border-left: 1px solid #d1d7db;
+    transform: translateX(100%);
+    transition: transform 0.3s ease-in-out;
+    display: none;
+    flex-direction: column;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.1);
+    z-index: 2001;
+}
+#card-edit-panel.visible {
+    display: flex;
+    transform: translateX(0) !important;
+}
+#card-edit-panel .form-group input,
+#card-edit-panel .form-group select,
+#card-edit-panel .form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #d1d7db;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+#card-edit-panel textarea { min-height: 100px; resize: vertical; }
+#save-edit-btn {
+    width: 100%;
+    padding: 12px;
+    margin-top: 20px;
+    background-color: #00a884;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+}
+#save-edit-btn:hover { background-color: #008069; }
+.task-client-name { font-size: 13px; color: #4a5568; margin-top: 4px; }
+#toast-message {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: #00a884;
+    color: white;
+    padding: 10px 16px;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    z-index: 3000;
+    display: none;
+}
