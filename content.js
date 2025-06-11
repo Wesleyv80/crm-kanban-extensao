@@ -7,6 +7,27 @@ async function carregarDados(uid) { try { const response = await chrome.runtime.
 // --- FUNÇÕES HELPERS ---
 function resetSidebarForm() { document.getElementById('crm-client-name').value = ''; document.getElementById('crm-client-phone').value = ''; document.getElementById('crm-client-origin').selectedIndex = 0; document.getElementById('crm-indicator-name').value = ''; document.getElementById('crm-indicator-phone').value = ''; document.getElementById('crm-indicacao-details').style.display = 'none'; document.querySelectorAll('input[name="crm-client-tags"]').forEach(tag => tag.checked = false); }
 
+function showToast(message) {
+    const toast = document.getElementById('toast-message');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.style.display = 'block';
+    setTimeout(() => { toast.style.display = 'none'; }, 2000);
+}
+
+function resetCardEditForm() {
+    document.getElementById('edit-name').value = '';
+    document.getElementById('edit-phone').value = '';
+    document.getElementById('edit-origin').value = '';
+    document.getElementById('edit-indicator-name').value = '';
+    document.getElementById('edit-indicator-phone').value = '';
+    document.getElementById('edit-indicacao-details').style.display = 'none';
+    document.querySelectorAll('input[name="edit-tags"]').forEach(cb => cb.checked = false);
+    document.getElementById('edit-valor').value = '';
+    document.getElementById('edit-mensalidade').value = '';
+    document.getElementById('edit-gordurinha').value = '';
+}
+
 // --- FUNÇÕES DRAG-AND-DROP ---
 function handleDragStart(event) { event.dataTransfer.setData("text/plain", event.target.id); setTimeout(() => { event.target.classList.add('dragging'); }, 0); }
 function handleDragEnd(event) { event.target.classList.remove('dragging'); }
@@ -48,18 +69,151 @@ async function saveBoardState() {
 }
 
 // --- FUNÇÕES DE GERENCIAMENTO DE COLUNAS ---
-async function handleAddNewColumn() { const newColumnName = prompt("Digite o nome da nova coluna:"); if (!newColumnName || !newColumnName.trim()) return; const crmData = await carregarDados("kanban_data"); if (crmData.columns.some(c => c.title.toLowerCase() === newColumnName.trim().toLowerCase())) { alert("Já existe uma coluna com este nome."); return; } crmData.columns.push({ title: newColumnName.trim(), clients: [], tasks: [] }); await salvarDados("kanban_data", crmData); await renderKanbanBoard(); }
-async function handleColumnRename(titleElement, oldName) { if (oldName === "Tarefas Pendentes") return; titleElement.contentEditable = true; titleElement.focus(); const originalHTML = titleElement.innerHTML; const selection = window.getSelection(); const range = document.createRange(); range.selectNodeContents(titleElement); const deleteBtn = titleElement.querySelector('.delete-column-btn'); if (deleteBtn) range.setEndBefore(deleteBtn); selection.removeAllRanges(); selection.addRange(range); const saveName = async () => { titleElement.contentEditable = false; const newName = titleElement.innerText.trim(); if (newName && newName !== oldName) { const crmData = await carregarDados("kanban_data"); const columnToRename = crmData.columns.find(col => col.title === oldName); if (crmData.columns.some(c => c.title.toLowerCase() === newName.toLowerCase())) { alert("Já existe uma coluna com este nome."); titleElement.innerHTML = originalHTML; } else if (columnToRename) { columnToRename.title = newName; await salvarDados("kanban_data", crmData); await renderKanbanBoard(); } } else { titleElement.innerHTML = originalHTML; } }; titleElement.addEventListener('blur', saveName, { once: true }); titleElement.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); titleElement.blur(); } else if (e.key === 'Escape') { titleElement.innerHTML = originalHTML; titleElement.blur(); } }, { once: true }); }
-async function handleColumnDelete(columnName) { if (columnName === "Tarefas Pendentes") { alert("A coluna de tarefas não pode ser excluída."); return; } const crmData = await carregarDados("kanban_data"); const columnToDelete = crmData.columns.find(col => col.title === columnName); if (columnToDelete && (columnToDelete.clients?.length > 0 || columnToDelete.tasks?.length > 0)) { alert("Apenas colunas vazias podem ser excluídas."); return; } if (confirm(`Tem certeza que deseja excluir a coluna "${columnName}"?`)) { crmData.columns = crmData.columns.filter(col => col.title !== columnName); await salvarDados("kanban_data", crmData); await renderKanbanBoard(); } }
+async function handleAddNewColumn() {
+    const newColumnName = prompt("Digite o nome da nova coluna:");
+    if (!newColumnName || !newColumnName.trim()) return;
+    const crmData = await carregarDados("kanban_data");
+    if (crmData.columns.some(c => c.title.toLowerCase() === newColumnName.trim().toLowerCase())) {
+        showToast('Já existe uma coluna com este nome.');
+        return;
+    }
+    crmData.columns.push({ title: newColumnName.trim(), clients: [], tasks: [] });
+    await salvarDados("kanban_data", crmData);
+    await renderKanbanBoard();
+}
+async function handleColumnRename(titleElement, oldName) {
+    if (oldName === "Tarefas Pendentes") return;
+    titleElement.contentEditable = true;
+    titleElement.focus();
+    const originalHTML = titleElement.innerHTML;
+    const selection = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(titleElement);
+    const deleteBtn = titleElement.querySelector('.delete-column-btn');
+    if (deleteBtn) range.setEndBefore(deleteBtn);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    const saveName = async () => {
+        titleElement.contentEditable = false;
+        const newName = titleElement.innerText.trim();
+        if (newName && newName !== oldName) {
+            const crmData = await carregarDados("kanban_data");
+            const columnToRename = crmData.columns.find(col => col.title === oldName);
+            if (crmData.columns.some(c => c.title.toLowerCase() === newName.toLowerCase())) {
+                showToast('Já existe uma coluna com este nome.');
+                titleElement.innerHTML = originalHTML;
+            } else if (columnToRename) {
+                columnToRename.title = newName;
+                await salvarDados("kanban_data", crmData);
+                await renderKanbanBoard();
+            }
+        } else {
+            titleElement.innerHTML = originalHTML;
+        }
+    };
+    titleElement.addEventListener('blur', saveName, { once: true });
+    titleElement.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            titleElement.blur();
+        } else if (e.key === 'Escape') {
+            titleElement.innerHTML = originalHTML;
+            titleElement.blur();
+        }
+    }, { once: true });
+}
+async function handleColumnDelete(columnName) {
+    if (columnName === "Tarefas Pendentes") {
+        showToast('A coluna de tarefas não pode ser excluída.');
+        return;
+    }
+    const crmData = await carregarDados("kanban_data");
+    const columnToDelete = crmData.columns.find(col => col.title === columnName);
+    if (columnToDelete && (columnToDelete.clients?.length > 0 || columnToDelete.tasks?.length > 0)) {
+        showToast('Apenas colunas vazias podem ser excluídas.');
+        return;
+    }
+    if (confirm(`Tem certeza que deseja excluir a coluna "${columnName}"?`)) {
+        crmData.columns = crmData.columns.filter(col => col.title !== columnName);
+        await salvarDados("kanban_data", crmData);
+        await renderKanbanBoard();
+    }
+}
 
 // --- FUNÇÕES DE RENDERIZAÇÃO ---
 function createClientCardElement(clientData) { const card = document.createElement('div'); card.className = 'kanban-card'; card.id = clientData.id; card.draggable = true; const tagsHTML = (clientData.tags || []).map(tag => `<span class="card-tag">${tag}</span>`).join(''); const dealsHTML = (clientData.deals || []).map(deal => `<div class="deal-item"><strong>${deal.title || 'Negócio'}</strong> (${deal.creationDate})<br>Adesão: R$${(deal.valor || 0).toFixed(2)} | Mensal: R$${(deal.mensalidade || 0).toFixed(2)}</div>`).join(''); card.innerHTML = `<div class="card-header"><div class="card-info"><h4>${clientData.name || 'Sem Nome'}</h4><p>${clientData.phone || ''}</p></div></div><div class="card-tags">${tagsHTML}</div>${dealsHTML ? `<div class="card-deals-container">${dealsHTML}</div>` : ''}`; card.addEventListener('dragstart', handleDragStart); card.addEventListener('dragend', handleDragEnd); card.addEventListener('dblclick', () => openCardEditPanel(clientData.id, 'client')); return card; }
-function createTaskCardElement(taskData) { const card = document.createElement('div'); card.className = 'kanban-card task-card'; card.id = taskData.id; card.dataset.taskId = taskData.id; card.draggable = false; card.innerHTML = `<button class="delete-task-btn" title="Concluir/Excluir Tarefa">&times;</button><div class="card-highlight">${taskData.highlight}</div><div class="card-notes">${taskData.notes}</div><div class="card-creation-date">Criado em: ${taskData.creationDate}</div>`; card.addEventListener('dblclick', () => openCardEditPanel(taskData.id, 'task')); return card; }
-function createColumnElement(columnData) { const column = document.createElement('div'); column.className = 'kanban-column'; column.dataset.id = columnData.title; if (columnData.title === 'Tarefas Pendentes') column.id = 'task-column'; const title = document.createElement('h3'); title.innerText = columnData.title; if (columnData.title !== 'Tarefas Pendentes') { const deleteBtn = document.createElement('button'); deleteBtn.className = 'delete-column-btn'; deleteBtn.innerHTML = '&times;'; deleteBtn.title = 'Excluir Coluna'; deleteBtn.onclick = (e) => { e.stopPropagation(); handleColumnDelete(columnData.title); }; title.appendChild(deleteBtn); title.addEventListener('dblclick', () => handleColumnRename(title, columnData.title)); column.addEventListener('dragover', handleDragOver); column.addEventListener('drop', handleDrop); } const itemsContainer = document.createElement('div'); itemsContainer.className = 'kanban-items'; if (columnData.tasks) { columnData.tasks.forEach(task => itemsContainer.appendChild(createTaskCardElement(task))); } if (columnData.clients) { columnData.clients.forEach(client => itemsContainer.appendChild(createClientCardElement(client))); } column.appendChild(title); column.appendChild(itemsContainer); return column; }
+function createTaskCardElement(taskData, crmData) {
+    const card = document.createElement('div');
+    card.className = 'kanban-card task-card';
+    card.id = taskData.id;
+    card.dataset.taskId = taskData.id;
+    card.draggable = false;
+    let clientName = '';
+    if (crmData) {
+        clientName = crmData.clients?.[taskData.clientId]?.name || '';
+        if (!clientName) {
+            for (const col of crmData.columns || []) {
+                const c = (col.clients || []).find(cl => cl.id === taskData.clientId);
+                if (c) { clientName = c.name; break; }
+            }
+        }
+    }
+    card.innerHTML = `<button class="delete-task-btn" title="Concluir/Excluir Tarefa">&times;</button><div class="card-highlight">${taskData.highlight}</div>${clientName ? `<div class="task-client-name">${clientName}</div>` : ''}<div class="card-notes">${taskData.notes}</div><div class="card-creation-date">Criado em: ${taskData.creationDate}</div>`;
+    card.addEventListener('dblclick', () => openCardEditPanel(taskData.id, 'task'));
+    return card;
+}
+function createColumnElement(columnData, crmData) {
+    const column = document.createElement('div');
+    column.className = 'kanban-column';
+    column.dataset.id = columnData.title;
+    if (columnData.title === 'Tarefas Pendentes') column.id = 'task-column';
+    const title = document.createElement('h3');
+    title.innerText = columnData.title;
+    if (columnData.title !== 'Tarefas Pendentes') {
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-column-btn';
+        deleteBtn.innerHTML = '&times;';
+        deleteBtn.title = 'Excluir Coluna';
+        deleteBtn.onclick = (e) => { e.stopPropagation(); handleColumnDelete(columnData.title); };
+        title.appendChild(deleteBtn);
+        title.addEventListener('dblclick', () => handleColumnRename(title, columnData.title));
+        column.addEventListener('dragover', handleDragOver);
+        column.addEventListener('drop', handleDrop);
+    }
+    const itemsContainer = document.createElement('div');
+    itemsContainer.className = 'kanban-items';
+    if (columnData.tasks) {
+        columnData.tasks.forEach(task => itemsContainer.appendChild(createTaskCardElement(task, crmData)));
+    }
+    if (columnData.clients) {
+        columnData.clients.forEach(client => itemsContainer.appendChild(createClientCardElement(client)));
+    }
+    column.appendChild(title);
+    column.appendChild(itemsContainer);
+    return column;
+}
 async function updateDashboard() { const dashboardCanvas = document.getElementById('financial-chart'); if (!dashboardCanvas) return; const ctx = dashboardCanvas.getContext('2d'); const crmData = await carregarDados("kanban_data"); if (!crmData || !crmData.columns) return; const labels = []; const datasets = { valor: [], mensalidade: [], gordurinha: [] }; crmData.columns.forEach(column => { if (column.title === 'Tarefas Pendentes') return; labels.push(column.title); let totalValor = 0; let totalMensalidade = 0; let totalGordurinha = 0; (column.clients || []).forEach(client => { (client.deals || []).forEach(deal => { totalValor += deal.valor || 0; totalMensalidade += deal.mensalidade || 0; totalGordurinha += deal.gordurinha || 0; }); }); datasets.valor.push(totalValor); datasets.mensalidade.push(totalMensalidade); datasets.gordurinha.push(totalGordurinha); }); if (window.myFinancialChart) window.myFinancialChart.destroy(); window.myFinancialChart = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [ { label: 'Adesão (R$)', data: datasets.valor, backgroundColor: 'rgba(75, 192, 192, 0.8)' }, { label: 'Mensalidade (R$)', data: datasets.mensalidade, backgroundColor: 'rgba(54, 162, 235, 0.8)' }, { label: 'Gordurinha (R$)', data: datasets.gordurinha, backgroundColor: 'rgba(255, 206, 86, 0.8)' } ] }, options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: 'white' } }, x: { ticks: { color: 'white' } } }, plugins: { legend: { labels: { color: 'white' } } } } }); }
-async function renderKanbanBoard() { const boardContainer = document.querySelector('.kanban-board'); if (!boardContainer) return; boardContainer.innerHTML = '<p>Carregando...</p>'; let crmData = await carregarDados("kanban_data"); if (!crmData || !crmData.columns) { crmData = { clients: {}, columns: [{ title: 'Tarefas Pendentes', tasks: [] }, { title: 'Em Negociação', clients: [] }] }; await salvarDados("kanban_data", crmData); } boardContainer.innerHTML = ''; crmData.columns.forEach(columnData => boardContainer.appendChild(createColumnElement(columnData))); const addColumnContainer = document.createElement('div'); addColumnContainer.className = 'add-column-container'; addColumnContainer.innerHTML = `<button id="add-new-column-btn" class="add-column-btn">+ Adicionar Nova Coluna</button>`; boardContainer.appendChild(addColumnContainer); document.getElementById('add-new-column-btn').onclick = handleAddNewColumn; await updateDashboard(); }
+async function renderKanbanBoard() {
+    const boardContainer = document.querySelector('.kanban-board');
+    if (!boardContainer) return;
+    boardContainer.innerHTML = '<p>Carregando...</p>';
+    let crmData = await carregarDados("kanban_data");
+    if (!crmData || !crmData.columns) {
+        crmData = { clients: {}, columns: [{ title: 'Tarefas Pendentes', tasks: [] }, { title: 'Em Negociação', clients: [] }] };
+        await salvarDados("kanban_data", crmData);
+    }
+    boardContainer.innerHTML = '';
+    crmData.columns.forEach(columnData => boardContainer.appendChild(createColumnElement(columnData, crmData)));
+    const addColumnContainer = document.createElement('div');
+    addColumnContainer.className = 'add-column-container';
+    addColumnContainer.innerHTML = `<button id="add-new-column-btn" class="add-column-btn">+ Adicionar Nova Coluna</button>`;
+    boardContainer.appendChild(addColumnContainer);
+    document.getElementById('add-new-column-btn').onclick = handleAddNewColumn;
+    await updateDashboard();
+}
 async function openCardEditPanel(id, type) {
     const panel = document.getElementById('card-edit-panel');
+    resetCardEditForm();
     panel.dataset.cardId = id;
     panel.dataset.cardType = type;
     const crmData = await carregarDados('kanban_data');
@@ -72,6 +226,9 @@ async function openCardEditPanel(id, type) {
         document.getElementById('edit-origin').parentElement.style.display = 'none';
         document.querySelector('#edit-panel-tags').style.display = 'none';
         document.getElementById('edit-valor').parentElement.style.display = 'none';
+        document.getElementById('edit-mensalidade').parentElement.style.display = 'none';
+        document.getElementById('edit-gordurinha').parentElement.style.display = 'none';
+        document.getElementById('edit-indicacao-details').style.display = 'none';
         document.getElementById('edit-name').value = data?.highlight || '';
         document.getElementById('edit-phone').value = data?.notes || '';
     } else {
@@ -85,13 +242,20 @@ async function openCardEditPanel(id, type) {
         document.getElementById('edit-origin').parentElement.style.display = '';
         document.querySelector('#edit-panel-tags').style.display = '';
         document.getElementById('edit-valor').parentElement.style.display = '';
+        document.getElementById('edit-mensalidade').parentElement.style.display = '';
+        document.getElementById('edit-gordurinha').parentElement.style.display = '';
         document.getElementById('edit-name').value = data?.name || '';
         document.getElementById('edit-phone').value = data?.phone || '';
         document.getElementById('edit-origin').value = data?.origin || '';
+        document.getElementById('edit-indicator-name').value = data?.indicator?.name || '';
+        document.getElementById('edit-indicator-phone').value = data?.indicator?.phone || '';
+        document.getElementById('edit-indicacao-details').style.display = (data?.origin === 'Indicação') ? 'block' : 'none';
         document.querySelectorAll('input[name="edit-tags"]').forEach(cb => {
             cb.checked = (data?.tags || []).includes(cb.value);
         });
         document.getElementById('edit-valor').value = data?.deals?.[0]?.valor || '';
+        document.getElementById('edit-mensalidade').value = data?.deals?.[0]?.mensalidade || '';
+        document.getElementById('edit-gordurinha').value = data?.deals?.[0]?.gordurinha || '';
     }
     panel.classList.add('visible');
 }
@@ -122,12 +286,23 @@ async function saveCardEdit() {
             client.name = document.getElementById('edit-name').value;
             client.phone = document.getElementById('edit-phone').value;
             client.origin = document.getElementById('edit-origin').value;
+            client.indicator = (client.origin === 'Indicação') ? {
+                name: document.getElementById('edit-indicator-name').value,
+                phone: document.getElementById('edit-indicator-phone').value
+            } : null;
             client.tags = Array.from(document.querySelectorAll('input[name="edit-tags"]:checked')).map(cb => cb.value);
             const valor = parseFloat(document.getElementById('edit-valor').value) || 0;
-            if (client.deals && client.deals[0]) client.deals[0].valor = valor;
+            const mensalidade = parseFloat(document.getElementById('edit-mensalidade').value) || 0;
+            const gordurinha = parseFloat(document.getElementById('edit-gordurinha').value) || 0;
+            if (!client.deals) client.deals = [{}];
+            if (!client.deals[0]) client.deals[0] = {};
+            client.deals[0].valor = valor;
+            client.deals[0].mensalidade = mensalidade;
+            client.deals[0].gordurinha = gordurinha;
         }
     }
     await salvarDados('kanban_data', crmData);
+    showToast('Salvo com sucesso!');
     closeCardEditPanel();
     await renderKanbanBoard();
 }
@@ -137,6 +312,7 @@ function closeCardEditPanel() {
     panel.classList.remove('visible');
     panel.dataset.cardId = '';
     panel.dataset.cardType = '';
+    resetCardEditForm();
 }
 // --- FUNÇÃO PRINCIPAL QUE CONSTRÓI A UI ---
 function buildUI() {
@@ -166,6 +342,7 @@ function buildUI() {
                     <button id="save-deal-btn" class="action-button">Salvar Negócio</button>
                 </div>
                 <div id="task-form-view" style="display: none;">
+                    <div class="form-group"><label for="task-client">Cliente</label><select id="task-client"></select></div>
                     <div class="form-group"><label for="task-highlight">Destaque da Tarefa</label><input type="text" id="task-highlight"></div>
                     <div class="form-group"><label for="task-notes">Observações</label><textarea id="task-notes" rows="4"></textarea></div>
                     <button id="save-task-btn" class="action-button">Salvar Tarefa</button>
@@ -178,8 +355,11 @@ function buildUI() {
                 <div class="form-group"><label for="edit-name">Nome</label><input type="text" id="edit-name"></div>
                 <div class="form-group"><label for="edit-phone">Telefone</label><input type="text" id="edit-phone"></div>
                 <div class="form-group"><label for="edit-origin">Origem</label><select id="edit-origin"><option value="">Selecione...</option><option value="Indicação">Indicação</option><option value="Já é cliente">Já é cliente</option><option value="Captação">Captação</option></select></div>
+                <div id="edit-indicacao-details" class="fieldset" style="display:none;"><legend>Dados da Indicação</legend><div class="form-group"><label for="edit-indicator-name">Nome de quem indicou</label><input type="text" id="edit-indicator-name"></div><div class="form-group"><label for="edit-indicator-phone">Telefone de quem indicou</label><input type="text" id="edit-indicator-phone"></div></div>
                 <div id="edit-panel-tags" class="fieldset"><legend>Categoria (Tags)</legend><div class="tags-group"><label><input type="checkbox" name="edit-tags" value="Em negociação"> Em negociação</label><label><input type="checkbox" name="edit-tags" value="Fechou"> Fechou</label><label><input type="checkbox" name="edit-tags" value="Esfriou"> Esfriou</label></div></div>
                 <div class="form-group"><label for="edit-valor">Valor</label><input type="number" id="edit-valor"></div>
+                <div class="form-group"><label for="edit-mensalidade">Mensalidade</label><input type="number" id="edit-mensalidade"></div>
+                <div class="form-group"><label for="edit-gordurinha">Gordurinha</label><input type="number" id="edit-gordurinha"></div>
             </div>
             <button id="save-edit-btn" class="action-button">Salvar alterações</button>
         </div>
@@ -193,6 +373,7 @@ function buildUI() {
             </div>
         </div>`;
     document.body.insertAdjacentHTML('beforeend', mainHTML);
+    document.body.insertAdjacentHTML("beforeend", "<div id=\"toast-message\"></div>");
     
     const fabContainer = document.createElement('div'); fabContainer.className = 'fab-container'; fabContainer.id = 'crm-fab-container';
     const kanbanBtn = document.createElement('button'); kanbanBtn.className = 'crm-action-button'; kanbanBtn.title = 'Abrir CRM Kanban'; kanbanBtn.innerHTML = `<img src="${chrome.runtime.getURL('panel_icon.svg')}" alt="Abrir CRM">`;
@@ -202,6 +383,23 @@ function buildUI() {
     
     let lastSavedClientId = null; let lastSavedIndicatorName = '';
 
+    async function populateClientSelect() {
+        const select = document.getElementById('task-client');
+        if (!select) return;
+        select.innerHTML = '';
+        const crmData = await carregarDados('kanban_data');
+        const clients = [];
+        if (crmData.clients) clients.push(...Object.values(crmData.clients));
+        (crmData.columns || []).forEach(col => { if (col.clients) clients.push(...col.clients); });
+        clients.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = c.name ? `${c.name} - ${c.phone}` : c.phone;
+            select.appendChild(opt);
+        });
+        if (clients.length > 0) select.value = lastSavedClientId || clients[0].id;
+    }
+
     addClientBtn.onclick = () => { document.getElementById('client-form-view').style.display = 'block'; document.getElementById('post-save-view').style.display = 'none'; document.getElementById('deal-form-view').style.display = 'none'; document.getElementById('task-form-view').style.display = 'none'; document.getElementById('sidebar-title').innerText = 'Adicionar Cliente'; resetSidebarForm(); document.getElementById('crm-sidebar').classList.add('visible'); };
     kanbanBtn.onclick = () => { renderKanbanBoard(); document.getElementById('kanban-panel-container').classList.add('visible'); };
     document.querySelector('#crm-sidebar .close-btn').onclick = () => { document.getElementById('crm-sidebar').classList.remove('visible'); };
@@ -209,10 +407,14 @@ function buildUI() {
     document.querySelector('#card-edit-panel .close-btn').onclick = closeCardEditPanel;
     document.getElementById('save-edit-btn').onclick = saveCardEdit;
     document.getElementById('crm-client-origin').onchange = (e) => { document.getElementById('crm-indicacao-details').style.display = (e.target.value === 'Indicação') ? 'block' : 'none'; };
+    document.getElementById('edit-origin').onchange = (e) => { document.getElementById('edit-indicacao-details').style.display = (e.target.value === 'Indicação') ? 'block' : 'none'; };
     
     document.getElementById('save-client-btn').onclick = async () => {
         const clientData = { id: 'client_' + Date.now(), name: document.getElementById('crm-client-name').value, phone: document.getElementById('crm-client-phone').value, origin: document.getElementById('crm-client-origin').value, indicator: (document.getElementById('crm-client-origin').value === 'Indicação') ? { name: document.getElementById('crm-indicator-name').value, phone: document.getElementById('crm-indicator-phone').value } : null, tags: Array.from(document.querySelectorAll('input[name="crm-client-tags"]:checked')).map(cb => cb.value), deals: [], tasks: [] };
-        if (!clientData.name && !clientData.phone) { alert("É preciso ter ao menos um Nome ou Telefone."); return; }
+        if (!clientData.name && !clientData.phone) {
+            showToast('É preciso ter ao menos um Nome ou Telefone.');
+            return;
+        }
         lastSavedClientId = clientData.id; lastSavedIndicatorName = clientData.indicator ? clientData.indicator.name : '';
         const crmData = await carregarDados("kanban_data") || { clients: {}, columns: [] };
         if (!crmData.clients) crmData.clients = {}; crmData.clients[lastSavedClientId] = clientData;
@@ -226,20 +428,30 @@ function buildUI() {
     document.getElementById('save-deal-btn').onclick = async () => {
         const dealData = { title: document.getElementById('deal-title').value, valor: parseFloat(document.getElementById('deal-valor').value) || 0, mensalidade: parseFloat(document.getElementById('deal-mensalidade').value) || 0, gordurinha: parseFloat(document.getElementById('deal-gordurinha').value) || 0, creationDate: new Date().toLocaleDateString('pt-BR'), indicatorName: lastSavedIndicatorName };
         const crmData = await carregarDados("kanban_data"); const newClient = crmData.clients[lastSavedClientId];
-        if (!newClient) { alert("Erro: Cliente não encontrado para adicionar o negócio."); return; }
+        if (!newClient) { showToast('Erro: Cliente não encontrado para adicionar o negócio.'); return; }
         if (!newClient.deals) newClient.deals = []; newClient.deals.push(dealData);
         let dealColumn = crmData.columns.find(col => col.title === "Em Negociação");
         if (!dealColumn) { crmData.columns.push({ title: "Em Negociação", clients: [] }); dealColumn = crmData.columns[crmData.columns.length - 1]; }
         dealColumn.clients.unshift(newClient); delete crmData.clients[lastSavedClientId];
-        await salvarDados("kanban_data", crmData); await renderKanbanBoard();
-        document.getElementById('deal-form-view').style.display = 'none'; document.getElementById('crm-sidebar').classList.remove('visible');
-        alert('Cliente e Negócio salvos com sucesso!');
+        await salvarDados("kanban_data", crmData);
+        await renderKanbanBoard();
+        document.getElementById('deal-form-view').style.display = 'none';
+        document.getElementById('crm-sidebar').classList.remove('visible');
+        showToast('Cliente e Negócio salvos com sucesso!');
     };
 
-    document.getElementById('sidebar-add-task-btn').onclick = () => { document.getElementById('post-save-view').style.display = 'none'; document.getElementById('task-form-view').style.display = 'block'; document.getElementById('sidebar-title').innerText = 'Nova Tarefa'; };
+    document.getElementById('sidebar-add-task-btn').onclick = async () => {
+        document.getElementById('post-save-view').style.display = 'none';
+        document.getElementById('task-form-view').style.display = 'block';
+        document.getElementById('sidebar-title').innerText = 'Nova Tarefa';
+        await populateClientSelect();
+    };
     document.getElementById('save-task-btn').onclick = async () => {
-        const taskData = { id: 'task_' + Date.now(), highlight: document.getElementById('task-highlight').value, notes: document.getElementById('task-notes').value, creationDate: new Date().toLocaleDateString('pt-BR'), clientId: lastSavedClientId };
-        if (!taskData.highlight) { alert("O Destaque da Tarefa é obrigatório."); return; }
+        const taskData = { id: 'task_' + Date.now(), highlight: document.getElementById('task-highlight').value, notes: document.getElementById('task-notes').value, creationDate: new Date().toLocaleDateString('pt-BR'), clientId: document.getElementById('task-client').value || lastSavedClientId };
+        if (!taskData.highlight) {
+            showToast('O Destaque da Tarefa é obrigatório.');
+            return;
+        }
         const crmData = await carregarDados("kanban_data");
         let taskColumn = crmData.columns.find(col => col.title === 'Tarefas Pendentes');
         if (!taskColumn) { taskColumn = { title: 'Tarefas Pendentes', tasks: [] }; crmData.columns.unshift(taskColumn); }
@@ -250,7 +462,7 @@ function buildUI() {
         document.getElementById('task-highlight').value = ''; document.getElementById('task-notes').value = '';
         document.getElementById('task-form-view').style.display = 'none';
         document.getElementById('crm-sidebar').classList.remove('visible');
-        alert('Tarefa adicionada com sucesso!');
+        showToast('Tarefa adicionada com sucesso!');
     };
     
     document.querySelector('.kanban-board').addEventListener('click', async (event) => {
