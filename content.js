@@ -12,7 +12,7 @@ function showToast(message) {
     if (!toast) return;
     toast.textContent = message;
     toast.style.display = 'block';
-    setTimeout(() => { toast.style.display = 'none'; }, 2000);
+    setTimeout(() => { toast.style.display = 'none'; }, 3000);
 }
 
 function resetCardEditForm() {
@@ -189,6 +189,9 @@ function createColumnElement(columnData, crmData) {
         });
         totalEl.textContent = `💵 Total: ${totalValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
     }
+    const countEl = document.createElement('div');
+    countEl.className = 'column-count';
+    countEl.textContent = `(${((columnData.clients || []).length + (columnData.tasks || []).length)} cards)`;
     const itemsContainer = document.createElement('div');
     itemsContainer.className = 'kanban-items';
     if (columnData.tasks) {
@@ -198,6 +201,7 @@ function createColumnElement(columnData, crmData) {
         columnData.clients.forEach(client => itemsContainer.appendChild(createClientCardElement(client)));
     }
     column.appendChild(title);
+    column.appendChild(countEl);
     if (columnData.title !== 'Tarefas Pendentes') column.appendChild(totalEl);
     column.appendChild(itemsContainer);
     return column;
@@ -215,6 +219,10 @@ async function updateColumnTotals(crmData) {
         const totalEl = colEl.querySelector('.column-total');
         if (totalEl) {
             totalEl.textContent = `\uD83D\uDCB5 Total: ${totalValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+        }
+        const countEl = colEl.querySelector('.column-count');
+        if (countEl) {
+            countEl.textContent = `(${((colData.clients || []).length + (colData.tasks || []).length)} cards)`;
         }
     });
 }
@@ -278,6 +286,10 @@ async function openCardEditPanel(id, type) {
         document.getElementById('edit-mensalidade').parentElement.style.display = 'none';
         document.getElementById('edit-gordurinha').parentElement.style.display = 'none';
         document.getElementById('edit-indicacao-details').style.display = 'none';
+        document.getElementById('edit-task-client-group').style.display = 'block';
+        await populateClientSelect('edit-task-client', data?.clientId);
+        document.querySelector("label[for='edit-name']").textContent = 'Assunto';
+        document.querySelector("label[for='edit-phone']").textContent = 'Informações';
         document.getElementById('edit-name').value = data?.highlight || '';
         document.getElementById('edit-phone').value = data?.notes || '';
     } else {
@@ -288,6 +300,9 @@ async function openCardEditPanel(id, type) {
                 if (data) break;
             }
         }
+        document.getElementById('edit-task-client-group').style.display = 'none';
+        document.querySelector("label[for='edit-name']").textContent = 'Nome';
+        document.querySelector("label[for='edit-phone']").textContent = 'Telefone';
         document.getElementById('edit-origin').parentElement.style.display = '';
         document.querySelector('#edit-panel-tags').style.display = '';
         document.getElementById('edit-valor').parentElement.style.display = '';
@@ -320,6 +335,7 @@ async function saveCardEdit() {
             if (t) {
                 t.highlight = document.getElementById('edit-name').value;
                 t.notes = document.getElementById('edit-phone').value;
+                t.clientId = document.getElementById('edit-task-client').value;
                 break;
             }
         }
@@ -351,7 +367,7 @@ async function saveCardEdit() {
         }
     }
     await salvarDados('kanban_data', crmData);
-    showToast('Salvo com sucesso!');
+    showToast('Salvo com sucesso ✅');
     closeCardEditPanel();
     await renderKanbanBoard();
 }
@@ -401,6 +417,7 @@ function buildUI() {
         <div id="card-edit-panel" class="card-edit-panel">
             <div class="sidebar-header"><button class="close-btn">&times;</button><h2>Editar Card</h2></div>
             <div class="sidebar-content">
+                <div id="edit-task-client-group" class="form-group"><label for="edit-task-client">Cliente</label><select id="edit-task-client"></select></div>
                 <div class="form-group"><label for="edit-name">Nome</label><input type="text" id="edit-name"></div>
                 <div class="form-group"><label for="edit-phone">Telefone</label><input type="text" id="edit-phone"></div>
                 <div class="form-group"><label for="edit-origin">Origem</label><select id="edit-origin"><option value="">Selecione...</option><option value="Indicação">Indicação</option><option value="Já é cliente">Já é cliente</option><option value="Captação">Captação</option></select></div>
@@ -416,6 +433,7 @@ function buildUI() {
             <div id="kanban-panel-content">
                 <div class="kanban-header">
                     <h2 class="kanban-title">Wesley — Consultor Especializado em Proteção Veicular</h2>
+                    <div class="kanban-search"><input type="text" id="kanban-search-input" placeholder="Buscar cliente..."><button id="kanban-search-btn">🔍</button><button id="kanban-search-clear">✖</button></div>
                     <div class="kanban-indicators">
                         <span id="indicator-deals">Negócios: <strong>0</strong></span>
                         <span id="indicator-tasks">Tarefas: <strong>0</strong></span>
@@ -434,11 +452,20 @@ function buildUI() {
     const addClientBtn = document.createElement('button'); addClientBtn.className = 'crm-action-button'; addClientBtn.title = 'Adicionar Cliente'; addClientBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" viewBox="0 0 16 16"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg>`;
     fabContainer.appendChild(addClientBtn); fabContainer.appendChild(kanbanBtn);
     document.body.appendChild(fabContainer);
+
+    const quick = document.createElement('div');
+    quick.className = 'quick-actions';
+    quick.id = 'crm-quick-actions';
+    quick.innerHTML = `
+        <button id="quick-deal-btn"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M8 7v2m1-1H7" stroke="currentColor"/></svg> Novo Negócio</button>
+        <button id="quick-task-btn"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M8 7v2m1-1H7" stroke="currentColor"/></svg> Nova Tarefa</button>`;
+    document.body.appendChild(quick);
+    quick.style.display = 'none';
     
     let lastSavedClientId = null; let lastSavedIndicatorName = '';
 
-    async function populateClientSelect() {
-        const select = document.getElementById('task-client');
+    async function populateClientSelect(selectId = 'task-client', selectedId = null) {
+        const select = document.getElementById(selectId);
         if (!select) return;
         select.innerHTML = '';
         const crmData = await carregarDados('kanban_data');
@@ -451,17 +478,59 @@ function buildUI() {
             opt.textContent = c.name ? `${c.name} - ${c.phone}` : c.phone;
             select.appendChild(opt);
         });
-        if (clients.length > 0) select.value = lastSavedClientId || clients[0].id;
+        if (clients.length > 0) select.value = selectedId || clients[0].id;
     }
 
     addClientBtn.onclick = () => { document.getElementById('client-form-view').style.display = 'block'; document.getElementById('post-save-view').style.display = 'none'; document.getElementById('deal-form-view').style.display = 'none'; document.getElementById('task-form-view').style.display = 'none'; document.getElementById('sidebar-title').innerText = 'Adicionar Cliente'; resetSidebarForm(); document.getElementById('crm-sidebar').classList.add('visible'); };
-    kanbanBtn.onclick = () => { renderKanbanBoard(); document.getElementById('kanban-panel-container').classList.add('visible'); };
+    const quickActions = document.getElementById('crm-quick-actions');
+    kanbanBtn.onclick = () => {
+        renderKanbanBoard();
+        document.getElementById('kanban-panel-container').classList.add('visible');
+        if (quickActions) quickActions.style.display = 'flex';
+    };
+    document.getElementById('kanban-panel-content').addEventListener('click', (e) => {
+        if (quickActions && !quickActions.contains(e.target)) quickActions.style.display = 'none';
+    });
     document.querySelector('#crm-sidebar .close-btn').onclick = () => { document.getElementById('crm-sidebar').classList.remove('visible'); };
-    document.querySelector('#kanban-panel-container .close-btn').onclick = () => { document.getElementById('kanban-panel-container').classList.remove('visible'); };
+    document.querySelector('#kanban-panel-container .close-btn').onclick = () => {
+        document.getElementById('kanban-panel-container').classList.remove('visible');
+        if (quickActions) quickActions.style.display = 'none';
+    };
     document.querySelector('#card-edit-panel .close-btn').onclick = closeCardEditPanel;
     document.getElementById('save-edit-btn').onclick = saveCardEdit;
     document.getElementById('crm-client-origin').onchange = (e) => { document.getElementById('crm-indicacao-details').style.display = (e.target.value === 'Indicação') ? 'block' : 'none'; };
     document.getElementById('edit-origin').onchange = (e) => { document.getElementById('edit-indicacao-details').style.display = (e.target.value === 'Indicação') ? 'block' : 'none'; };
+
+    document.getElementById('quick-task-btn').onclick = async () => {
+        document.getElementById('deal-form-view').style.display = 'none';
+        document.getElementById('client-form-view').style.display = 'none';
+        document.getElementById('post-save-view').style.display = 'none';
+        document.getElementById('task-form-view').style.display = 'block';
+        document.getElementById('sidebar-title').innerText = 'Nova Tarefa';
+        await populateClientSelect('task-client');
+        document.getElementById('crm-sidebar').classList.add('visible');
+    };
+    document.getElementById('quick-deal-btn').onclick = () => {
+        document.getElementById('task-form-view').style.display = 'none';
+        document.getElementById('client-form-view').style.display = 'none';
+        document.getElementById('post-save-view').style.display = 'none';
+        document.getElementById('deal-form-view').style.display = 'block';
+        document.getElementById('sidebar-title').innerText = 'Novo Negócio';
+        document.getElementById('crm-sidebar').classList.add('visible');
+    };
+
+    document.getElementById('kanban-search-btn').onclick = () => {
+        const term = document.getElementById('kanban-search-input').value.toLowerCase();
+        document.querySelectorAll('.kanban-card').forEach(card => {
+            const nameEl = card.querySelector('.card-info h4') || card.querySelector('.task-client-name');
+            const text = nameEl ? nameEl.textContent.toLowerCase() : '';
+            card.style.display = term && !text.includes(term) ? 'none' : '';
+        });
+    };
+    document.getElementById('kanban-search-clear').onclick = () => {
+        document.getElementById('kanban-search-input').value = '';
+        document.querySelectorAll('.kanban-card').forEach(card => card.style.display = '');
+    };
     
     document.getElementById('save-client-btn').onclick = async () => {
         const clientData = { id: 'client_' + Date.now(), name: document.getElementById('crm-client-name').value, phone: document.getElementById('crm-client-phone').value, origin: document.getElementById('crm-client-origin').value, indicator: (document.getElementById('crm-client-origin').value === 'Indicação') ? { name: document.getElementById('crm-indicator-name').value, phone: document.getElementById('crm-indicator-phone').value } : null, tags: Array.from(document.querySelectorAll('input[name="crm-client-tags"]:checked')).map(cb => cb.value), deals: [], tasks: [] };
@@ -491,14 +560,14 @@ function buildUI() {
         await renderKanbanBoard();
         document.getElementById('deal-form-view').style.display = 'none';
         document.getElementById('crm-sidebar').classList.remove('visible');
-        showToast('Cliente e Negócio salvos com sucesso!');
+        showToast('Salvo com sucesso ✅');
     };
 
     document.getElementById('sidebar-add-task-btn').onclick = async () => {
         document.getElementById('post-save-view').style.display = 'none';
         document.getElementById('task-form-view').style.display = 'block';
         document.getElementById('sidebar-title').innerText = 'Nova Tarefa';
-        await populateClientSelect();
+        await populateClientSelect('task-client', lastSavedClientId);
     };
     document.getElementById('save-task-btn').onclick = async () => {
         const taskData = { id: 'task_' + Date.now(), highlight: document.getElementById('task-highlight').value, notes: document.getElementById('task-notes').value, creationDate: new Date().toLocaleDateString('pt-BR'), clientId: document.getElementById('task-client').value || lastSavedClientId };
@@ -510,13 +579,13 @@ function buildUI() {
         let taskColumn = crmData.columns.find(col => col.title === 'Tarefas Pendentes');
         if (!taskColumn) { taskColumn = { title: 'Tarefas Pendentes', tasks: [] }; crmData.columns.unshift(taskColumn); }
         if (!taskColumn.tasks) taskColumn.tasks = [];
-        taskColumn.tasks.push(taskData);
+        taskColumn.tasks.unshift(taskData);
         await salvarDados("kanban_data", crmData);
         await renderKanbanBoard();
         document.getElementById('task-highlight').value = ''; document.getElementById('task-notes').value = '';
         document.getElementById('task-form-view').style.display = 'none';
         document.getElementById('crm-sidebar').classList.remove('visible');
-        showToast('Tarefa adicionada com sucesso!');
+        showToast('Salvo com sucesso ✅');
     };
     
     document.querySelector('.kanban-board').addEventListener('click', async (event) => {
