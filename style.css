@@ -245,6 +245,36 @@
 .crm-modal-footer button { padding: 10px 16px; border: none; border-radius: 6px; background-color: #00a884; color: white; font-weight: 600; cursor: pointer; font-size: 14px; }
 .crm-modal-footer button:hover { background-color: #008069; }
 
+/* --- Modal de Verificação Automática --- */
+#precheck-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+#precheck-overlay.visible { display: flex; }
+#precheck-photo {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+    margin: 0 auto 10px;
+}
+#precheck-modal .crm-modal-footer button.secondary {
+    background-color: #e0e0e0;
+    color: #333;
+}
+#precheck-modal .crm-modal-footer button.secondary:hover {
+    background-color: #cfcfcf;
+}
+
 /* --- Painel de Edição de Cards --- */
 #card-edit-panel {
     position: fixed;
