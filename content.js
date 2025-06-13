@@ -41,17 +41,17 @@ function resetCardEditForm() {
 
 // --- CAPTURA DE DADOS DO WHATSAPP ---
 function captureWhatsAppData() {
-    const name = document.querySelector('span[dir="auto"].selectable-text')?.textContent ||
-                  document.querySelector('header span[dir="auto"]')?.textContent || '';
-    const phone = document.querySelector('div[class*="x1fcty0u"]')?.textContent ||
-                  document.querySelector('span[class*="x1fcty0u"]')?.textContent || '';
-    const photo = document.querySelector('header img')?.src ||
-                  document.querySelector('img[src*="media-bsb1-1.cdn.whatsapp.net"]')?.src ||
-                  PLACEHOLDER_IMG;
+    const photoEl = document.querySelector('img[class^="x1n2onr6"]');
+    const nameEl = document.querySelector('span.selectable-text[style*="min-height: 0px"]');
+    const phoneEl = document.querySelector('div[class*="x1fcty0u"][class*="x1o2sk6j"]');
+    const photo = photoEl?.src || PLACEHOLDER_IMG;
+    const name = nameEl?.textContent || '';
+    const phone = phoneEl?.textContent || '';
     return { name, phone, photo };
 }
 
 function openClientForm(data = {}) {
+    document.getElementById('precheck-view').style.display = 'none';
     document.getElementById('client-form-view').style.display = 'block';
     document.getElementById('post-save-view').style.display = 'none';
     document.getElementById('deal-form-view').style.display = 'none';
@@ -443,27 +443,15 @@ function buildUI() {
     if (document.getElementById('crm-fab-container')) return;
 
     const mainHTML = `
-        <div id="precheck-overlay">
-            <div id="precheck-modal" class="crm-modal">
-                <img id="precheck-photo" src="${PLACEHOLDER_IMG}" alt="Foto">
-                <div class="precheck-info">
-                    <div class="info-box">
-                        <div class="info-title">Nome:</div>
-                        <div class="info-content" id="precheck-name">Não encontrado</div>
-                    </div>
-                    <div class="info-box">
-                        <div class="info-title">Telefone:</div>
-                        <div class="info-content" id="precheck-phone">Não encontrado</div>
-                    </div>
-                </div>
-                <div class="precheck-actions">
-                    <button id="precheck-start-btn" class="action-button">Iniciar Cadastro</button>
-                </div>
-            </div>
-        </div>
         <div id="crm-sidebar">
             <div class="sidebar-header"><button class="close-btn">&times;</button><h2 id="sidebar-title">Adicionar Cliente</h2></div>
             <div class="sidebar-content">
+                <div id="precheck-view" style="display:none;">
+                    <img id="precheck-photo" src="${PLACEHOLDER_IMG}" alt="Foto" style="width:100px;height:100px;border-radius:50%;object-fit:cover;margin:0 auto 20px;display:block;">
+                    <div class="form-group"><label>Nome</label><input type="text" id="precheck-name" readonly></div>
+                    <div class="form-group"><label>Telefone</label><input type="text" id="precheck-phone" readonly></div>
+                    <button id="precheck-start-btn" class="action-button">Iniciar Cadastro</button>
+                </div>
                 <div id="client-form-view">
                     <img id="client-photo-preview" src="${PLACEHOLDER_IMG}" alt="Foto" style="width:100px;height:100px;border-radius:50%;object-fit:cover;margin:0 auto 20px;display:block;">
                     <div class="form-group"><label for="crm-client-name">Nome</label><input type="text" id="crm-client-name"></div>
@@ -544,16 +532,22 @@ function buildUI() {
     let lastSavedIndicatorName = '';
     let precheckData = null;
 
-    function showPrecheckModal(data) {
-        document.getElementById('precheck-name').textContent = data.name || 'Não encontrado';
-        document.getElementById('precheck-phone').textContent = data.phone || 'Não encontrado';
+    function showPrecheckPanel(data) {
+        document.getElementById('precheck-name').value = data.name || '';
+        document.getElementById('precheck-phone').value = data.phone || '';
         document.getElementById('precheck-photo').src = data.photo || PLACEHOLDER_IMG;
-        document.getElementById('precheck-overlay').classList.add('visible');
+        document.getElementById('client-form-view').style.display = 'none';
+        document.getElementById('deal-form-view').style.display = 'none';
+        document.getElementById('task-form-view').style.display = 'none';
+        document.getElementById('post-save-view').style.display = 'none';
+        document.getElementById('precheck-view').style.display = 'block';
+        document.getElementById('sidebar-title').innerText = 'Verificação Automática';
+        document.getElementById('crm-sidebar').classList.add('visible');
         precheckData = data;
     }
 
-    function hidePrecheckModal() {
-        document.getElementById('precheck-overlay').classList.remove('visible');
+    function hidePrecheckPanel() {
+        document.getElementById('precheck-view').style.display = 'none';
     }
 
     async function populateClientSelect(selectId = 'task-client', selectedId = null) {
@@ -574,7 +568,7 @@ function buildUI() {
     }
 
     addClientBtn.onclick = () => {
-        showPrecheckModal(captureWhatsAppData());
+        showPrecheckPanel(captureWhatsAppData());
     };
     const quickActions = document.getElementById('crm-quick-actions');
     kanbanBtn.onclick = () => {
@@ -585,21 +579,18 @@ function buildUI() {
     document.getElementById('kanban-panel-content').addEventListener('click', (e) => {
         if (quickActions && !quickActions.contains(e.target)) quickActions.style.display = 'none';
     });
-    document.querySelector('#crm-sidebar .close-btn').onclick = () => { document.getElementById('crm-sidebar').classList.remove('visible'); };
+    document.querySelector('#crm-sidebar .close-btn').onclick = () => {
+        hidePrecheckPanel();
+        document.getElementById('crm-sidebar').classList.remove('visible');
+    };
     document.querySelector('#kanban-panel-container .close-btn').onclick = () => {
         document.getElementById('kanban-panel-container').classList.remove('visible');
         if (quickActions) quickActions.style.display = 'none';
     };
     document.getElementById('precheck-start-btn').onclick = () => {
         openClientForm(precheckData || {});
-        hidePrecheckModal();
+        hidePrecheckPanel();
     };
-    document.getElementById('precheck-overlay').onclick = (e) => {
-        if (e.target.id === 'precheck-overlay') hidePrecheckModal();
-    };
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') hidePrecheckModal();
-    });
     document.querySelector('#card-edit-panel .close-btn').onclick = closeCardEditPanel;
     document.getElementById('save-edit-btn').onclick = saveCardEdit;
     document.getElementById('crm-client-origin').onchange = (e) => { document.getElementById('crm-indicacao-details').style.display = (e.target.value === 'Indicação') ? 'block' : 'none'; };

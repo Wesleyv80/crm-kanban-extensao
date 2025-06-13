@@ -251,53 +251,17 @@
 .crm-modal-footer button { padding: 10px 16px; border: none; border-radius: 6px; background-color: #00a884; color: white; font-weight: 600; cursor: pointer; font-size: 14px; }
 .crm-modal-footer button:hover { background-color: #008069; }
 
-/* --- Modal de Verificação Automática --- */
-#precheck-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.6);
-    z-index: 1999;
-    display: none;
-    align-items: center;
-    justify-content: center;
+/* --- Painel de Verificação Automática --- */
+#precheck-view {
+    text-align: center;
 }
-#precheck-overlay.visible { display: flex; }
-#precheck-overlay.visible #precheck-modal { display: block; }
 #precheck-photo {
-    width: 96px;
-    height: 96px;
+    width: 100px;
+    height: 100px;
     border-radius: 50%;
     object-fit: cover;
     display: block;
-    margin: 0 auto 10px;
-}
-.precheck-info {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-    margin-bottom: 20px;
-}
-.precheck-info .info-box {
-    background-color: #fff;
-    border-radius: 8px;
-    padding: 10px 14px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    min-width: 140px;
-}
-.precheck-info .info-title {
-    font-weight: 600;
-    font-size: 14px;
-    color: #555;
-}
-.precheck-info .info-content {
-    margin-top: 4px;
-    font-size: 15px;
-}
-.precheck-actions {
-    text-align: center;
+    margin: 0 auto 20px;
 }
 
 /* --- Painel de Edição de Cards --- */
