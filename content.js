@@ -41,16 +41,24 @@ function resetCardEditForm() {
 
 // --- CAPTURA DE DADOS DO WHATSAPP ---
 function captureWhatsAppData() {
-    const photoEl = document.querySelector(
-        'img.x1n2onr6.x1lliihq.xh8yej3.x5yr21d.x6ikm8r.x10wlt62.x1c9tyrk.xeusxvb.x1pahc9y.x1ertn4p.xl1xv1r.x115dhu7.x17vty23.x1hc1fzr.x4u6w88.x1g40iwv._ao3e'
-    );
-    const nameEl = document.querySelector('span.selectable-text[style*="min-height: 0px"]');
-    const phoneEl = document.querySelector(
-        'div.x1fcty0u.xhslqc4.x6prxxf.x1o2sk6j'
-    );
-    const photo = photoEl?.src || PLACEHOLDER_IMG;
-    const name = nameEl?.textContent || '';
-    const phone = phoneEl?.textContent || '';
+    const header = document.querySelector('[data-testid="conversation-info-header"]');
+    const photoEl = header ? header.querySelector('img') : null;
+    const titleEl = document.querySelector('header span[title]');
+    let name = '';
+    let phone = '';
+    if (titleEl) {
+        name = titleEl.innerText || '';
+        phone = titleEl.getAttribute('title') || '';
+        if (!phone || phone === name) {
+            if (/^\+?\d/.test(name)) {
+                phone = name;
+                name = '';
+            } else {
+                phone = '';
+            }
+        }
+    }
+    const photo = photoEl ? photoEl.src : PLACEHOLDER_IMG;
     return { name, phone, photo };
 }
 
