@@ -617,6 +617,9 @@ function buildUI() {
         precheckData = { name: nome, phone: telefone, photo: imagem };
     }
 
+    // Torna a função acessível globalmente para outros módulos
+    window.showPrecheckPanel = showPrecheckPanel;
+
     function hidePrecheckPanel() {
         document.getElementById('precheck-view').style.display = 'none';
     }
@@ -772,10 +775,70 @@ function buildUI() {
             }
         }
     });
-    console.log("UI do CRM injetada e eventos configurados com sucesso!");
+console.log("UI do CRM injetada e eventos configurados com sucesso!");
+}
+
+// --- MONITORAMENTO DE CONVERSAS NO WHATSAPP ---
+let currentMonitoredContact = null;
+
+function iniciarMonitoramentoDeConversa() {
+    console.log('CRM Extensão: Iniciando monitoramento de conversas...');
+
+    const painelPrincipal = document.querySelector('#main');
+    if (!painelPrincipal) {
+        setTimeout(iniciarMonitoramentoDeConversa, 1000);
+        return;
+    }
+
+    const observer = new MutationObserver(() => {
+        const headerDaConversa = document.querySelector('[data-testid="conversation-header"]');
+        if (headerDaConversa) {
+            capturarEPreencherDadosDoContato();
+        }
+    });
+
+    observer.observe(painelPrincipal, { childList: true, subtree: true });
+
+    console.log('CRM Extensão: Monitoramento ativo.');
+}
+
+function capturarEPreencherDadosDoContato() {
+    try {
+        const header = document.querySelector('[data-testid="conversation-header"]');
+        if (!header) return;
+
+        const nomeEl = header.querySelector('span[dir="auto"][title]');
+        const imgEl = header.querySelector('img');
+
+        const nome = nomeEl ? nomeEl.title : null;
+        const imagem = imgEl ? imgEl.src : null;
+
+        if (!nome || !imagem) return;
+
+        if (currentMonitoredContact === nome) return;
+        currentMonitoredContact = nome;
+
+        console.log('CRM Extensão: Novo contato ativo detectado -', nome);
+
+        const dadosParaPainel = {
+            imagem: imagem,
+            nome: nome,
+            telefone: nome.startsWith('+') ? nome : 'Não disponível'
+        };
+
+        if (typeof window.showPrecheckPanel === 'function') {
+            window.showPrecheckPanel(dadosParaPainel);
+        } else {
+            console.warn('CRM Extensão: Função showPrecheckPanel não disponível.');
+        }
+
+    } catch (e) {
+        console.error('CRM Extensão: Erro ao capturar dados do contato:', e);
+    }
 }
 
 window.addEventListener('load', () => {
     setTimeout(buildUI, 2000);
     observadorDeContato.iniciar();
+    iniciarMonitoramentoDeConversa();
 });
