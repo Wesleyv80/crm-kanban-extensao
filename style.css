@@ -227,7 +227,13 @@
 .task-card .card-notes { font-size: 14px; color: #4a5568; white-space: pre-wrap; }
 .task-card .card-creation-date { font-size: 11px; color: #a0aec0; margin-top: 8px; text-align: right; }
 .card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.card-info h4 { margin: 0; font-size: 15px; font-weight: 600; color: #1a202c; }
+.card-photo {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.card-info h4 { margin: 0; font-size: 16px; font-weight: 700; color: #1a202c; }
 .card-info p { margin: 0; font-size: 13px; color: #718096; }
 .card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .card-tag { background-color: #e2e8f0; color: #4a5568; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; }
@@ -252,27 +258,46 @@
     left: 0;
     width: 100vw;
     height: 100vh;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: rgba(0, 0, 0, 0.6);
     z-index: 1999;
     display: none;
     align-items: center;
     justify-content: center;
 }
 #precheck-overlay.visible { display: flex; }
+#precheck-overlay.visible #precheck-modal { display: block; }
 #precheck-photo {
-    width: 120px;
-    height: 120px;
+    width: 96px;
+    height: 96px;
     border-radius: 50%;
     object-fit: cover;
     display: block;
     margin: 0 auto 10px;
 }
-#precheck-modal .crm-modal-footer button.secondary {
-    background-color: #e0e0e0;
-    color: #333;
+.precheck-info {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 20px;
 }
-#precheck-modal .crm-modal-footer button.secondary:hover {
-    background-color: #cfcfcf;
+.precheck-info .info-box {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 10px 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    min-width: 140px;
+}
+.precheck-info .info-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: #555;
+}
+.precheck-info .info-content {
+    margin-top: 4px;
+    font-size: 15px;
+}
+.precheck-actions {
+    text-align: center;
 }
 
 /* --- Painel de Edição de Cards --- */

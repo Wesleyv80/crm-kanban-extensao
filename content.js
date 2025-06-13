@@ -178,7 +178,29 @@ async function handleColumnDelete(columnName) {
 }
 
 // --- FUNÇÕES DE RENDERIZAÇÃO ---
-function createClientCardElement(clientData) { const card = document.createElement('div'); card.className = 'kanban-card'; card.id = clientData.id; card.draggable = true; const tagsHTML = (clientData.tags || []).map(tag => `<span class="card-tag">${tag}</span>`).join(''); const dealsHTML = (clientData.deals || []).map(deal => `<div class="deal-item"><strong>${deal.title || 'Negócio'}</strong> (${deal.creationDate})<br>Adesão: R$${(deal.valor || 0).toFixed(2)} | Mensal: R$${(deal.mensalidade || 0).toFixed(2)}</div>`).join(''); card.innerHTML = `<div class="card-header"><div class="card-info"><h4>${clientData.name || 'Sem Nome'}</h4><p>${clientData.phone || ''}</p></div></div><div class="card-tags">${tagsHTML}</div>${dealsHTML ? `<div class="card-deals-container">${dealsHTML}</div>` : ''}`; card.addEventListener('dragstart', handleDragStart); card.addEventListener('dragend', handleDragEnd); card.addEventListener('dblclick', () => openCardEditPanel(clientData.id, 'client')); return card; }
+function createClientCardElement(clientData) {
+    const card = document.createElement('div');
+    card.className = 'kanban-card';
+    card.id = clientData.id;
+    card.draggable = true;
+    const tagsHTML = (clientData.tags || [])
+        .map(tag => `<span class="card-tag">${tag}</span>`)
+        .join('');
+    const dealsHTML = (clientData.deals || [])
+        .map(deal => `<div class="deal-item"><strong>${deal.title || 'Negócio'}</strong> (${deal.creationDate})<br>Adesão: R$${(deal.valor || 0).toFixed(2)} | Mensal: R$${(deal.mensalidade || 0).toFixed(2)}</div>`)
+        .join('');
+    card.innerHTML = `
+        <div class="card-header">
+            <img class="card-photo" src="${clientData.photo || PLACEHOLDER_IMG}" alt="Foto">
+            <div class="card-info"><h4>${clientData.name || 'Sem Nome'}</h4><p>${clientData.phone || ''}</p></div>
+        </div>
+        <div class="card-tags">${tagsHTML}</div>
+        ${dealsHTML ? `<div class="card-deals-container">${dealsHTML}</div>` : ''}`;
+    card.addEventListener('dragstart', handleDragStart);
+    card.addEventListener('dragend', handleDragEnd);
+    card.addEventListener('dblclick', () => openCardEditPanel(clientData.id, 'client'));
+    return card;
+}
 function createTaskCardElement(taskData, crmData) {
     const card = document.createElement('div');
     card.className = 'kanban-card task-card';
@@ -423,15 +445,19 @@ function buildUI() {
     const mainHTML = `
         <div id="precheck-overlay">
             <div id="precheck-modal" class="crm-modal">
-                <div class="crm-modal-header"><h3>Verificação Automática</h3><button class="close-btn">&times;</button></div>
-                <div class="crm-modal-content">
-                    <img id="precheck-photo" src="${PLACEHOLDER_IMG}" alt="Foto">
-                    <p><strong>Nome:</strong> <span id="precheck-name">Não encontrado</span></p>
-                    <p><strong>Telefone:</strong> <span id="precheck-phone">Não encontrado</span></p>
+                <img id="precheck-photo" src="${PLACEHOLDER_IMG}" alt="Foto">
+                <div class="precheck-info">
+                    <div class="info-box">
+                        <div class="info-title">Nome:</div>
+                        <div class="info-content" id="precheck-name">Não encontrado</div>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-title">Telefone:</div>
+                        <div class="info-content" id="precheck-phone">Não encontrado</div>
+                    </div>
                 </div>
-                <div class="crm-modal-footer">
-                    <button id="precheck-start-btn">Iniciar Cadastro</button>
-                    <button id="precheck-manual-btn" class="secondary">Editar Manualmente</button>
+                <div class="precheck-actions">
+                    <button id="precheck-start-btn" class="action-button">Iniciar Cadastro</button>
                 </div>
             </div>
         </div>
@@ -564,13 +590,8 @@ function buildUI() {
         document.getElementById('kanban-panel-container').classList.remove('visible');
         if (quickActions) quickActions.style.display = 'none';
     };
-    document.querySelector('#precheck-modal .close-btn').onclick = hidePrecheckModal;
     document.getElementById('precheck-start-btn').onclick = () => {
         openClientForm(precheckData || {});
-        hidePrecheckModal();
-    };
-    document.getElementById('precheck-manual-btn').onclick = () => {
-        openClientForm({});
         hidePrecheckModal();
     };
     document.getElementById('precheck-overlay').onclick = (e) => {
@@ -616,7 +637,7 @@ function buildUI() {
     };
     
     document.getElementById('save-client-btn').onclick = async () => {
-        const clientData = { id: 'client_' + Date.now(), name: document.getElementById('crm-client-name').value, phone: document.getElementById('crm-client-phone').value, origin: document.getElementById('crm-client-origin').value, indicator: (document.getElementById('crm-client-origin').value === 'Indicação') ? { name: document.getElementById('crm-indicator-name').value, phone: document.getElementById('crm-indicator-phone').value } : null, tags: Array.from(document.querySelectorAll('input[name="crm-client-tags"]:checked')).map(cb => cb.value), deals: [], tasks: [] };
+        const clientData = { id: 'client_' + Date.now(), name: document.getElementById('crm-client-name').value, phone: document.getElementById('crm-client-phone').value, photo: document.getElementById('client-photo-preview').src, origin: document.getElementById('crm-client-origin').value, indicator: (document.getElementById('crm-client-origin').value === 'Indicação') ? { name: document.getElementById('crm-indicator-name').value, phone: document.getElementById('crm-indicator-phone').value } : null, tags: Array.from(document.querySelectorAll('input[name="crm-client-tags"]:checked')).map(cb => cb.value), deals: [], tasks: [] };
         if (!clientData.name && !clientData.phone) {
             showToast('É preciso ter ao menos um Nome ou Telefone.');
             return;
