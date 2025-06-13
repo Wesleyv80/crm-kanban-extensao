@@ -44,16 +44,34 @@ const observadorDeContato = (() => {
     let captureInterval = null;
     function capturarContatoAtivo() {
         try {
-            const header = document.querySelector('header');
-            if (!header) return null;
+            console.log('📲 Iniciando captura de dados do contato...');
 
-            const imgEl = header.querySelector('img');
+            const nomeSpan = Array.from(document.querySelectorAll('span')).find(el =>
+                el.offsetHeight > 0 &&
+                el.innerText.trim().length >= 4 &&
+                el.innerText.trim().split(' ').length >= 2 &&
+                !el.innerText.match(/\d/) &&
+                !el.innerText.startsWith('+')
+            );
+            const nome = nomeSpan ? nomeSpan.innerText.trim() : null;
+
+            const imgEl = document.querySelector('header img');
             const imagem = imgEl && imgEl.src.includes('whatsapp.net') ? imgEl.src : null;
 
-            const nomeOuTelefoneEl = header.querySelector('span[title]');
-            const nomeOuTelefone = nomeOuTelefoneEl ? nomeOuTelefoneEl.innerText : null;
+            let telefone = null;
+            const linkTel = document.querySelector('a[href^="tel:"]');
+            if (linkTel) {
+                telefone = linkTel.innerText.trim();
+            } else {
+                const candidato = Array.from(document.querySelectorAll('div, span'))
+                    .map(el => el.innerText.trim())
+                    .find(txt => /^\+\d{2}\s?\d{2}\s?\d{4,5}-\d{4}$/.test(txt));
+                telefone = candidato || null;
+            }
 
-            return { imagem, nome: nomeOuTelefone, telefone: nomeOuTelefone };
+            if (!nome && !telefone && !imagem) return null;
+
+            return { imagem, nome, telefone };
         } catch (erro) {
             console.error('Erro ao capturar dados do contato:', erro);
             return null;
@@ -804,30 +822,16 @@ function iniciarMonitoramentoDeConversa() {
 
 function capturarEPreencherDadosDoContato() {
     try {
-        const header = document.querySelector('[data-testid="conversation-header"]');
-        if (!header) return;
+        const dados = observadorDeContato.capturarContatoAtivo();
+        if (!dados) return;
 
-        const nomeEl = header.querySelector('span[dir="auto"][title]');
-        const imgEl = header.querySelector('img');
+        if (currentMonitoredContact === dados.nome) return;
+        currentMonitoredContact = dados.nome || null;
 
-        const nome = nomeEl ? nomeEl.title : null;
-        const imagem = imgEl ? imgEl.src : null;
-
-        if (!nome || !imagem) return;
-
-        if (currentMonitoredContact === nome) return;
-        currentMonitoredContact = nome;
-
-        console.log('CRM Extensão: Novo contato ativo detectado -', nome);
-
-        const dadosParaPainel = {
-            imagem: imagem,
-            nome: nome,
-            telefone: nome.startsWith('+') ? nome : 'Não disponível'
-        };
+        console.log('CRM Extensão: Novo contato ativo detectado -', dados.nome);
 
         if (typeof window.showPrecheckPanel === 'function') {
-            window.showPrecheckPanel(dadosParaPainel);
+            window.showPrecheckPanel(dados);
         } else {
             console.warn('CRM Extensão: Função showPrecheckPanel não disponível.');
         }
