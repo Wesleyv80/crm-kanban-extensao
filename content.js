@@ -41,6 +41,7 @@ function resetCardEditForm() {
 
 // --- MÓDULO: OBSERVADOR DE CONTATO ---
 const observadorDeContato = (() => {
+    let captureInterval = null;
     function capturarContatoAtivo() {
         try {
             const header = document.querySelector('header');
@@ -80,18 +81,29 @@ const observadorDeContato = (() => {
         window.lastCapturedContact = { name: nome, phone: telefone, photo: imagem };
     }
 
+    function tentarCapturarContatoRepetidamente() {
+        if (captureInterval) clearInterval(captureInterval);
+        captureInterval = setInterval(() => {
+            const dados = capturarContatoAtivo();
+            if (dados && dados.imagem && dados.nome && dados.telefone) {
+                console.log('Dados capturados com sucesso:', dados);
+                preencherPainelLateral(dados);
+                clearInterval(captureInterval);
+                captureInterval = null;
+            }
+        }, 1000);
+    }
+
     function iniciar() {
         const observer = new MutationObserver(() => {
-            const dados = capturarContatoAtivo();
-            if (dados && dados.nome && dados.imagem && dados.telefone) {
-                preencherPainelLateral(dados);
-            }
+            tentarCapturarContatoRepetidamente();
         });
 
         const tentarObservar = () => {
             const header = document.querySelector('header');
             if (header) {
                 observer.observe(header, { childList: true, subtree: true });
+                tentarCapturarContatoRepetidamente();
             } else {
                 setTimeout(tentarObservar, 1000);
             }
