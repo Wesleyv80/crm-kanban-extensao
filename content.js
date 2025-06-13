@@ -1,11 +1,22 @@
 console.log("CRM Kanban v15.0 - Versão Final Montada");
+const PLACEHOLDER_IMG = chrome.runtime.getURL("placeholder.png");
 
 // --- FUNÇÕES DE COMUNICAÇÃO COM O BACKGROUND ---
 async function salvarDados(uid, data) { try { const response = await chrome.runtime.sendMessage({ action: "salvarDados", uid, data }); return response; } catch (e) { console.error("Falha ao enviar mensagem para salvar dados:", e); } }
 async function carregarDados(uid) { try { const response = await chrome.runtime.sendMessage({ action: "carregarDados", uid }); return response; } catch (e) { console.error("Falha ao enviar mensagem para carregar dados:", e); return null; } }
 
 // --- FUNÇÕES HELPERS ---
-function resetSidebarForm() { document.getElementById('crm-client-name').value = ''; document.getElementById('crm-client-phone').value = ''; document.getElementById('crm-client-origin').selectedIndex = 0; document.getElementById('crm-indicator-name').value = ''; document.getElementById('crm-indicator-phone').value = ''; document.getElementById('crm-indicacao-details').style.display = 'none'; document.querySelectorAll('input[name="crm-client-tags"]').forEach(tag => tag.checked = false); }
+function resetSidebarForm() {
+    document.getElementById('crm-client-name').value = '';
+    document.getElementById('crm-client-phone').value = '';
+    document.getElementById('crm-client-origin').selectedIndex = 0;
+    document.getElementById('crm-indicator-name').value = '';
+    document.getElementById('crm-indicator-phone').value = '';
+    document.getElementById('crm-indicacao-details').style.display = 'none';
+    document.querySelectorAll('input[name="crm-client-tags"]').forEach(tag => tag.checked = false);
+    const img = document.getElementById('client-photo-preview');
+    if (img) img.src = PLACEHOLDER_IMG;
+}
 
 function showToast(message) {
     const toast = document.getElementById('toast-message');
@@ -26,6 +37,32 @@ function resetCardEditForm() {
     document.getElementById('edit-valor').value = '';
     document.getElementById('edit-mensalidade').value = '';
     document.getElementById('edit-gordurinha').value = '';
+}
+
+// --- CAPTURA DE DADOS DO WHATSAPP ---
+function captureWhatsAppData() {
+    const name = document.querySelector('span[dir="auto"].selectable-text')?.textContent ||
+                  document.querySelector('header span[dir="auto"]')?.textContent || '';
+    const phone = document.querySelector('div[class*="x1fcty0u"]')?.textContent ||
+                  document.querySelector('span[class*="x1fcty0u"]')?.textContent || '';
+    const photo = document.querySelector('header img')?.src ||
+                  document.querySelector('img[src*="media-bsb1-1.cdn.whatsapp.net"]')?.src ||
+                  PLACEHOLDER_IMG;
+    return { name, phone, photo };
+}
+
+function openClientForm(data = {}) {
+    document.getElementById('client-form-view').style.display = 'block';
+    document.getElementById('post-save-view').style.display = 'none';
+    document.getElementById('deal-form-view').style.display = 'none';
+    document.getElementById('task-form-view').style.display = 'none';
+    document.getElementById('sidebar-title').innerText = 'Adicionar Cliente';
+    resetSidebarForm();
+    document.getElementById('crm-client-name').value = data.name || '';
+    document.getElementById('crm-client-phone').value = data.phone || '';
+    const img = document.getElementById('client-photo-preview');
+    if (img) img.src = data.photo || PLACEHOLDER_IMG;
+    document.getElementById('crm-sidebar').classList.add('visible');
 }
 
 // --- FUNÇÕES DRAG-AND-DROP ---
@@ -141,7 +178,20 @@ async function handleColumnDelete(columnName) {
 }
 
 // --- FUNÇÕES DE RENDERIZAÇÃO ---
-function createClientCardElement(clientData) { const card = document.createElement('div'); card.className = 'kanban-card'; card.id = clientData.id; card.draggable = true; const tagsHTML = (clientData.tags || []).map(tag => `<span class="card-tag">${tag}</span>`).join(''); const dealsHTML = (clientData.deals || []).map(deal => `<div class="deal-item"><strong>${deal.title || 'Negócio'}</strong> (${deal.creationDate})<br>Adesão: R$${(deal.valor || 0).toFixed(2)} | Mensal: R$${(deal.mensalidade || 0).toFixed(2)}</div>`).join(''); card.innerHTML = `<div class="card-header"><div class="card-info"><h4>${clientData.name || 'Sem Nome'}</h4><p>${clientData.phone || ''}</p></div></div><div class="card-tags">${tagsHTML}</div>${dealsHTML ? `<div class="card-deals-container">${dealsHTML}</div>` : ''}`; card.addEventListener('dragstart', handleDragStart); card.addEventListener('dragend', handleDragEnd); card.addEventListener('dblclick', () => openCardEditPanel(clientData.id, 'client')); return card; }
+function createClientCardElement(clientData) {
+    const card = document.createElement('div');
+    card.className = 'kanban-card';
+    card.id = clientData.id;
+    card.draggable = true;
+    const tagsHTML = (clientData.tags || []).map(tag => `<span class="card-tag">${tag}</span>`).join('');
+    const dealsHTML = (clientData.deals || []).map(deal => `<div class="deal-item"><strong>${deal.title || 'Negócio'}</strong> (${deal.creationDate})<br>Adesão: R$${(deal.valor || 0).toFixed(2)} | Mensal: R$${(deal.mensalidade || 0).toFixed(2)}</div>`).join('');
+    const photo = clientData.photo || PLACEHOLDER_IMG;
+    card.innerHTML = `<div class="card-header"><img class="card-photo" src="${photo}" alt="Foto"><div class="card-info"><h4>${clientData.name || 'Sem Nome'}</h4><p>${clientData.phone || ''}</p></div></div><div class="card-tags">${tagsHTML}</div>${dealsHTML ? `<div class="card-deals-container">${dealsHTML}</div>` : ''}`;
+    card.addEventListener('dragstart', handleDragStart);
+    card.addEventListener('dragend', handleDragEnd);
+    card.addEventListener('dblclick', () => openCardEditPanel(clientData.id, 'client'));
+    return card;
+}
 function createTaskCardElement(taskData, crmData) {
     const card = document.createElement('div');
     card.className = 'kanban-card task-card';
@@ -384,10 +434,30 @@ function buildUI() {
     if (document.getElementById('crm-fab-container')) return;
 
     const mainHTML = `
+        <div id="precheck-overlay">
+            <div id="precheck-modal" class="crm-modal">
+                <div class="precheck-content">
+                    <img id="precheck-photo" src="${PLACEHOLDER_IMG}" alt="Foto">
+                    <div class="precheck-fields">
+                        <div class="precheck-box">
+                            <span class="box-title">Nome:</span>
+                            <span id="precheck-name" class="box-value">Não encontrado</span>
+                        </div>
+                        <div class="precheck-box">
+                            <span class="box-title">Telefone:</span>
+                            <span id="precheck-phone" class="box-value">Não encontrado</span>
+                        </div>
+                    </div>
+                    <button id="precheck-start-btn" class="precheck-start">Iniciar Cadastro</button>
+                    <button id="precheck-manual-btn" class="precheck-manual">Editar Manualmente</button>
+                </div>
+            </div>
+        </div>
         <div id="crm-sidebar">
             <div class="sidebar-header"><button class="close-btn">&times;</button><h2 id="sidebar-title">Adicionar Cliente</h2></div>
             <div class="sidebar-content">
                 <div id="client-form-view">
+                    <img id="client-photo-preview" src="${PLACEHOLDER_IMG}" alt="Foto">
                     <div class="form-group"><label for="crm-client-name">Nome</label><input type="text" id="crm-client-name"></div>
                     <div class="form-group"><label for="crm-client-phone">Telefone</label><input type="text" id="crm-client-phone"></div>
                     <div class="form-group"><label for="crm-client-origin">Origem</label><select id="crm-client-origin"><option value="">Selecione...</option><option value="Indicação">Indicação</option><option value="Já é cliente">Já é cliente</option><option value="Captação">Captação</option></select></div>
@@ -462,7 +532,23 @@ function buildUI() {
     document.body.appendChild(quick);
     quick.style.display = 'none';
     
-    let lastSavedClientId = null; let lastSavedIndicatorName = '';
+    let lastSavedClientId = null;
+    let lastSavedIndicatorName = '';
+    let precheckData = null;
+
+    function showPrecheckModal(data) {
+        document.getElementById('precheck-name').textContent = data.name || 'Não encontrado';
+        document.getElementById('precheck-phone').textContent = data.phone || 'Não encontrado';
+        document.getElementById('precheck-photo').src = data.photo || PLACEHOLDER_IMG;
+        document.getElementById('precheck-modal').style.display = 'block';
+        document.getElementById('precheck-overlay').classList.add('visible');
+        precheckData = data;
+    }
+
+    function hidePrecheckModal() {
+        document.getElementById('precheck-overlay').classList.remove('visible');
+        document.getElementById('precheck-modal').style.display = 'none';
+    }
 
     async function populateClientSelect(selectId = 'task-client', selectedId = null) {
         const select = document.getElementById(selectId);
@@ -481,7 +567,9 @@ function buildUI() {
         if (clients.length > 0) select.value = selectedId || clients[0].id;
     }
 
-    addClientBtn.onclick = () => { document.getElementById('client-form-view').style.display = 'block'; document.getElementById('post-save-view').style.display = 'none'; document.getElementById('deal-form-view').style.display = 'none'; document.getElementById('task-form-view').style.display = 'none'; document.getElementById('sidebar-title').innerText = 'Adicionar Cliente'; resetSidebarForm(); document.getElementById('crm-sidebar').classList.add('visible'); };
+    addClientBtn.onclick = () => {
+        showPrecheckModal(captureWhatsAppData());
+    };
     const quickActions = document.getElementById('crm-quick-actions');
     kanbanBtn.onclick = () => {
         renderKanbanBoard();
@@ -496,6 +584,20 @@ function buildUI() {
         document.getElementById('kanban-panel-container').classList.remove('visible');
         if (quickActions) quickActions.style.display = 'none';
     };
+    document.getElementById('precheck-start-btn').onclick = () => {
+        openClientForm(precheckData || {});
+        hidePrecheckModal();
+    };
+    document.getElementById('precheck-manual-btn').onclick = () => {
+        openClientForm({});
+        hidePrecheckModal();
+    };
+    document.getElementById('precheck-overlay').onclick = (e) => {
+        if (e.target.id === 'precheck-overlay') hidePrecheckModal();
+    };
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') hidePrecheckModal();
+    });
     document.querySelector('#card-edit-panel .close-btn').onclick = closeCardEditPanel;
     document.getElementById('save-edit-btn').onclick = saveCardEdit;
     document.getElementById('crm-client-origin').onchange = (e) => { document.getElementById('crm-indicacao-details').style.display = (e.target.value === 'Indicação') ? 'block' : 'none'; };
@@ -533,7 +635,7 @@ function buildUI() {
     };
     
     document.getElementById('save-client-btn').onclick = async () => {
-        const clientData = { id: 'client_' + Date.now(), name: document.getElementById('crm-client-name').value, phone: document.getElementById('crm-client-phone').value, origin: document.getElementById('crm-client-origin').value, indicator: (document.getElementById('crm-client-origin').value === 'Indicação') ? { name: document.getElementById('crm-indicator-name').value, phone: document.getElementById('crm-indicator-phone').value } : null, tags: Array.from(document.querySelectorAll('input[name="crm-client-tags"]:checked')).map(cb => cb.value), deals: [], tasks: [] };
+        const clientData = { id: 'client_' + Date.now(), name: document.getElementById('crm-client-name').value, phone: document.getElementById('crm-client-phone').value, origin: document.getElementById('crm-client-origin').value, indicator: (document.getElementById('crm-client-origin').value === 'Indicação') ? { name: document.getElementById('crm-indicator-name').value, phone: document.getElementById('crm-indicator-phone').value } : null, tags: Array.from(document.querySelectorAll('input[name="crm-client-tags"]:checked')).map(cb => cb.value), photo: document.getElementById('client-photo-preview').src || PLACEHOLDER_IMG, deals: [], tasks: [] };
         if (!clientData.name && !clientData.phone) {
             showToast('É preciso ter ao menos um Nome ou Telefone.');
             return;
