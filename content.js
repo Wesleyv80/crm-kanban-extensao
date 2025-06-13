@@ -40,28 +40,28 @@ function resetCardEditForm() {
 }
 
 // --- CAPTURA DE DADOS DO WHATSAPP ---
-function captureWhatsAppData() {
-    const header = document.querySelector('[data-testid="conversation-info-header"]');
-    const photoEl = header ? header.querySelector('img') : null;
-    const titleEl = document.querySelector('header span[title]');
-    let name = '';
-    let phone = '';
-    if (titleEl) {
-        name = titleEl.innerText || '';
-        phone = titleEl.getAttribute('title') || '';
-        if (!phone || phone === name) {
-            if (/^\+?\d/.test(name)) {
-                phone = name;
-                name = '';
-            } else {
-                phone = '';
-            }
-        }
-    }
-    const photo = photoEl ? photoEl.src : PLACEHOLDER_IMG;
-    return { name, phone, photo };
-}
+function capturarContatoAtivo() {
+  try {
+    const header = document.querySelector("header");
+    if (!header) return null;
 
+    const imgEl = header.querySelector("img");
+    const imagem = imgEl && imgEl.src.includes("whatsapp.net") ? imgEl.src : null;
+
+    const nomeOuTelefoneEl = header.querySelector("span[title]");
+    const nomeOuTelefone = nomeOuTelefoneEl ? nomeOuTelefoneEl.innerText : null;
+
+    return {
+      imagem,
+      nome: nomeOuTelefone,
+      telefone: nomeOuTelefone
+    };
+  } catch (erro) {
+    console.error("Erro ao capturar dados do contato:", erro);
+    return null;
+  }
+
+}
 function openClientForm(data = {}) {
     document.getElementById('precheck-view').style.display = 'none';
     document.getElementById('client-form-view').style.display = 'block';
@@ -545,17 +545,24 @@ function buildUI() {
     let precheckData = null;
 
     function showPrecheckPanel(data) {
-        document.getElementById('precheck-name').value = data.name || '';
-        document.getElementById('precheck-phone').value = data.phone || '';
-        document.getElementById('precheck-photo').src = data.photo || PLACEHOLDER_IMG;
-        document.getElementById('client-form-view').style.display = 'none';
-        document.getElementById('deal-form-view').style.display = 'none';
-        document.getElementById('task-form-view').style.display = 'none';
-        document.getElementById('post-save-view').style.display = 'none';
-        document.getElementById('precheck-view').style.display = 'block';
-        document.getElementById('sidebar-title').innerText = 'Verificação Automática';
-        document.getElementById('crm-sidebar').classList.add('visible');
-        precheckData = data;
+        if (!data) {
+            showToast("Nenhuma conversa ativa para capturar.");
+            return;
+        }
+        const nome = data.nome || data.name || "";
+        const telefone = data.telefone || data.phone || "";
+        const imagem = data.imagem || data.photo || PLACEHOLDER_IMG;
+        document.getElementById("precheck-name").value = nome;
+        document.getElementById("precheck-phone").value = telefone;
+        document.getElementById("precheck-photo").src = imagem;
+        document.getElementById("client-form-view").style.display = "none";
+        document.getElementById("deal-form-view").style.display = "none";
+        document.getElementById("task-form-view").style.display = "none";
+        document.getElementById("post-save-view").style.display = "none";
+        document.getElementById("precheck-view").style.display = "block";
+        document.getElementById("sidebar-title").innerText = "Verificação Automática";
+        document.getElementById("crm-sidebar").classList.add("visible");
+        precheckData = { name: nome, phone: telefone, photo: imagem };
     }
 
     function hidePrecheckPanel() {
@@ -580,7 +587,7 @@ function buildUI() {
     }
 
     addClientBtn.onclick = () => {
-        showPrecheckPanel(captureWhatsAppData());
+        showPrecheckPanel(capturarContatoAtivo());
     };
     const quickActions = document.getElementById('crm-quick-actions');
     kanbanBtn.onclick = () => {
@@ -712,7 +719,6 @@ function buildUI() {
             }
         }
     });
-
     console.log("UI do CRM injetada e eventos configurados com sucesso!");
 }
 
