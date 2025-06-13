@@ -39,29 +39,69 @@ function resetCardEditForm() {
     document.getElementById('edit-gordurinha').value = '';
 }
 
-// --- CAPTURA DE DADOS DO WHATSAPP ---
-function capturarContatoAtivo() {
-  try {
-    const header = document.querySelector("header");
-    if (!header) return null;
+// --- MÓDULO: OBSERVADOR DE CONTATO ---
+const observadorDeContato = (() => {
+    function capturarContatoAtivo() {
+        try {
+            const header = document.querySelector('header');
+            if (!header) return null;
 
-    const imgEl = header.querySelector("img");
-    const imagem = imgEl && imgEl.src.includes("whatsapp.net") ? imgEl.src : null;
+            const imgEl = header.querySelector('img');
+            const imagem = imgEl && imgEl.src.includes('whatsapp.net') ? imgEl.src : null;
 
-    const nomeOuTelefoneEl = header.querySelector("span[title]");
-    const nomeOuTelefone = nomeOuTelefoneEl ? nomeOuTelefoneEl.innerText : null;
+            const nomeOuTelefoneEl = header.querySelector('span[title]');
+            const nomeOuTelefone = nomeOuTelefoneEl ? nomeOuTelefoneEl.innerText : null;
 
-    return {
-      imagem,
-      nome: nomeOuTelefone,
-      telefone: nomeOuTelefone
-    };
-  } catch (erro) {
-    console.error("Erro ao capturar dados do contato:", erro);
-    return null;
-  }
+            return { imagem, nome: nomeOuTelefone, telefone: nomeOuTelefone };
+        } catch (erro) {
+            console.error('Erro ao capturar dados do contato:', erro);
+            return null;
+        }
+    }
 
-}
+    function preencherPainelLateral({ imagem, nome, telefone }) {
+        const sidebar = document.getElementById('crm-sidebar');
+        const precheckView = document.getElementById('precheck-view');
+        if (!sidebar || !precheckView) return;
+
+        document.getElementById('precheck-name').value = nome || '';
+        document.getElementById('precheck-phone').value = telefone || '';
+        const img = document.getElementById('precheck-photo');
+        if (img) img.src = imagem || PLACEHOLDER_IMG;
+
+        document.getElementById('client-form-view').style.display = 'none';
+        document.getElementById('deal-form-view').style.display = 'none';
+        document.getElementById('task-form-view').style.display = 'none';
+        document.getElementById('post-save-view').style.display = 'none';
+        precheckView.style.display = 'block';
+        document.getElementById('sidebar-title').innerText = 'Verificação Automática';
+        sidebar.classList.add('visible');
+
+        window.lastCapturedContact = { name: nome, phone: telefone, photo: imagem };
+    }
+
+    function iniciar() {
+        const observer = new MutationObserver(() => {
+            const dados = capturarContatoAtivo();
+            if (dados && dados.nome && dados.imagem && dados.telefone) {
+                preencherPainelLateral(dados);
+            }
+        });
+
+        const tentarObservar = () => {
+            const header = document.querySelector('header');
+            if (header) {
+                observer.observe(header, { childList: true, subtree: true });
+            } else {
+                setTimeout(tentarObservar, 1000);
+            }
+        };
+
+        tentarObservar();
+    }
+
+    return { iniciar, capturarContatoAtivo };
+})();
 function openClientForm(data = {}) {
     document.getElementById('precheck-view').style.display = 'none';
     document.getElementById('client-form-view').style.display = 'block';
@@ -587,7 +627,7 @@ function buildUI() {
     }
 
     addClientBtn.onclick = () => {
-        showPrecheckPanel(capturarContatoAtivo());
+        showPrecheckPanel(observadorDeContato.capturarContatoAtivo());
     };
     const quickActions = document.getElementById('crm-quick-actions');
     kanbanBtn.onclick = () => {
@@ -607,7 +647,8 @@ function buildUI() {
         if (quickActions) quickActions.style.display = 'none';
     };
     document.getElementById('precheck-start-btn').onclick = () => {
-        openClientForm(precheckData || {});
+        const data = window.lastCapturedContact || precheckData || {};
+        openClientForm(data);
         hidePrecheckPanel();
     };
     document.querySelector('#card-edit-panel .close-btn').onclick = closeCardEditPanel;
@@ -724,4 +765,5 @@ function buildUI() {
 
 window.addEventListener('load', () => {
     setTimeout(buildUI, 2000);
+    observadorDeContato.iniciar();
 });
