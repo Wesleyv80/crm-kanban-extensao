@@ -880,6 +880,4 @@ function capturarEPreencherDadosDoContato() {
 
 window.addEventListener('load', () => {
     setTimeout(buildUI, 2000);
-    observadorDeContato.iniciar();
-    iniciarMonitoramentoDeConversa();
 });
