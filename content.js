@@ -39,6 +39,46 @@ function resetCardEditForm() {
     document.getElementById('edit-gordurinha').value = '';
 }
 
+async function capturarDadosCompletos() {
+    const delay = ms => new Promise(res => setTimeout(res, ms));
+    await delay(800);
+
+    const nomeSpan = Array.from(document.querySelectorAll('span')).find(el =>
+        el.offsetHeight > 0 &&
+        el.innerText.trim().length >= 4 &&
+        el.innerText.trim().split(' ').length >= 2 &&
+        !el.innerText.match(/\d/) &&
+        !el.innerText.startsWith('+')
+    );
+    const nome = nomeSpan ? nomeSpan.innerText.trim() : null;
+
+    let telefone = null;
+    const painelInfo = document.querySelector('div[data-id*="@c.us"]');
+    const dataId = painelInfo && painelInfo.getAttribute('data-id');
+    if (dataId && dataId.includes('@c.us')) {
+        const telBruto = dataId.replace('@c.us', '');
+        telefone = formatarTelefone(telBruto);
+    }
+
+    let imagem = null;
+    const imgPainel = document.querySelector('div[role="button"] img[src*="whatsapp.net"]');
+    if (imgPainel && imgPainel.src) {
+        imagem = imgPainel.src;
+    }
+
+    return { nome, telefone, imagem };
+}
+
+function formatarTelefone(numero) {
+    const apenasNumeros = numero.replace(/\D/g, '');
+    if (apenasNumeros.length === 11) {
+        return `(${apenasNumeros.slice(2, 4)}) ${apenasNumeros.slice(4, 9)}-${apenasNumeros.slice(9)}`;
+    } else if (apenasNumeros.length === 10) {
+        return `(${apenasNumeros.slice(2, 4)}) ${apenasNumeros.slice(4, 8)}-${apenasNumeros.slice(8)}`;
+    }
+    return numero;
+}
+
 // --- MÓDULO: OBSERVADOR DE CONTATO ---
 const observadorDeContato = (() => {
     let captureInterval = null;
@@ -659,8 +699,10 @@ function buildUI() {
         if (clients.length > 0) select.value = selectedId || clients[0].id;
     }
 
-    addClientBtn.onclick = () => {
-        showPrecheckPanel(observadorDeContato.capturarContatoAtivo());
+    addClientBtn.onclick = async () => {
+        const dados = await capturarDadosCompletos();
+        console.log('🎯 Resultado final:', dados);
+        showPrecheckPanel(dados);
     };
     const quickActions = document.getElementById('crm-quick-actions');
     kanbanBtn.onclick = () => {
