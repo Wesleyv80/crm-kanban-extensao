@@ -152,22 +152,17 @@ const observadorDeContato = (() => {
         }, 1000);
     }
 
+    // 🧠 Atualização do content.js para execução somente via clique do botão da extensão
     function iniciar() {
-        const observer = new MutationObserver(() => {
-            tentarCapturarContatoRepetidamente();
-        });
-
-        const tentarObservar = () => {
-            const header = document.querySelector('header');
-            if (header) {
-                observer.observe(header, { childList: true, subtree: true });
+        const botaoCaptura = document.querySelector("#abrirPainelCRM");
+        if (botaoCaptura) {
+            botaoCaptura.addEventListener("click", () => {
+                console.log("📥 Botão clicado: iniciando captura do contato...");
                 tentarCapturarContatoRepetidamente();
-            } else {
-                setTimeout(tentarObservar, 1000);
-            }
-        };
-
-        tentarObservar();
+            });
+        } else {
+            console.warn("⚠️ Botão #abrirPainelCRM não encontrado. Verifique se está carregado.");
+        }
     }
 
     return { iniciar, capturarContatoAtivo };
