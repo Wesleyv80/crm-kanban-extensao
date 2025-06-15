@@ -53,15 +53,17 @@ async function capturarDadosCompletos() {
     const nome = nomeSpan ? nomeSpan.innerText.trim() : null;
 
     let telefone = null;
-    const painelInfo = document.querySelector('div[data-id*="@c.us"]');
+    const painelInfo = document.querySelector('div[data-id]');
     const dataId = painelInfo && painelInfo.getAttribute('data-id');
-    if (dataId && dataId.includes('@c.us')) {
-        const telBruto = dataId.replace('@c.us', '');
-        telefone = formatarTelefone(telBruto);
+    if (dataId) {
+        const match = dataId.match(/^[^_]*_([^_]+)_/);
+        if (match) {
+            telefone = formatarTelefone(match[1]);
+        }
     }
 
     let imagem = null;
-    const imgPainel = document.querySelector('div[role="button"] img[src*="whatsapp.net"]');
+    const imgPainel = document.querySelector('div[role="button"] img[src*="whatsapp.net"][src*="s96x96"]');
     if (imgPainel && imgPainel.src) {
         imagem = imgPainel.src;
     }
