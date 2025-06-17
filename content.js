@@ -883,3 +883,71 @@ function capturarEPreencherDadosDoContato() {
 window.addEventListener('load', () => {
     setTimeout(buildUI, 2000);
 });
+
+(function () {
+    if (document.getElementById("barra-crm-direita")) {
+        console.log("🔄 Barra lateral direita já existe.");
+        return;
+    }
+
+    const app = document.getElementById("app");
+    if (app) {
+        app.style.marginRight = "60px";
+        app.style.width = "calc(100vw - 60px)";
+    }
+
+    const barra = document.createElement("div");
+    barra.id = "barra-crm-direita";
+    Object.assign(barra.style, {
+        position: "fixed",
+        top: "0",
+        right: "0",
+        width: "60px",
+        height: "100vh",
+        backgroundColor: "#f3e5f5",
+        borderLeft: "1px solid #999",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "flex-start",
+        flexDirection: "column",
+        zIndex: "999999",
+        paddingTop: "10px",
+        gap: "10px",
+    });
+
+    function criarBotaoImagem(src, title, onClick) {
+        const img = document.createElement("img");
+        img.src = src;
+        img.alt = title;
+        img.title = title;
+        Object.assign(img.style, {
+            width: "36px",
+            height: "36px",
+            borderRadius: "8px",
+            cursor: "pointer",
+            background: "#fff",
+            padding: "4px",
+            boxShadow: "0 0 5px rgba(0,0,0,0.2)",
+        });
+        img.onclick = onClick;
+        return img;
+    }
+
+    const btnCRM = criarBotaoImagem("crm.png", "Abrir CRM", () => {
+        const painel = document.getElementById("painel-crm-kanban");
+        if (painel) {
+            painel.classList.add("visible");
+            painel.style.display = "block";
+        }
+    });
+
+    const btnCadastro = criarBotaoImagem("cadastro.png", "Novo Cadastro", () => {
+        if (window.openClientForm) {
+            window.openClientForm();
+        }
+    });
+
+    barra.appendChild(btnCRM);
+    barra.appendChild(btnCadastro);
+    document.body.appendChild(barra);
+})();
