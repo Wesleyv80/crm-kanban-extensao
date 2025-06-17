@@ -1,0 +1,324 @@
+/* --- BOTÕES DE AÇÃO FLUTUANTES --- */
+.fab-container {
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+.crm-action-button {
+    background-color: #00a884;
+    color: white;
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    border: none;
+}
+.crm-action-button:hover {
+    background-color: #008069;
+    transform: scale(1.08);
+}
+.crm-action-button svg, .crm-action-button img {
+    width: 28px;
+    height: 28px;
+    filter: invert(100%);
+}
+
+/* --- BOTÕES RÁPIDOS DE TAREFA/NEGÓCIO --- */
+.quick-actions {
+    position: fixed;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 2001;
+}
+.quick-actions button {
+    background: transparent;
+    border: none;
+    color: #008069;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+.quick-actions button svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* --- ESTRUTURA DA SIDEBAR DE CADASTRO --- */
+#crm-sidebar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 380px;
+    height: 100%;
+    background-color: #f0f2f5;
+    border-left: 1px solid #d1d7db;
+    z-index: 2001;
+    transform: translateX(100%);
+    transition: transform 0.3s ease-in-out;
+    display: none; /* Começa escondido e é ativado por JS */
+    flex-direction: column;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.1);
+}
+#crm-sidebar.visible {
+    display: flex;
+    transform: translateX(0) !important;
+}
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    background-color: #008069;
+    color: white;
+    flex-shrink: 0;
+}
+.sidebar-header .close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    margin-right: 20px;
+    padding: 0;
+}
+.sidebar-header h2 {
+    font-size: 19px;
+    font-weight: 600;
+    margin: 0;
+}
+.sidebar-content {
+    padding: 20px;
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+/* --- ESTRUTURA DO PAINEL KANBAN --- */
+#kanban-panel-container {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1999 !important;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+#kanban-panel-container.visible {
+    display: flex !important;
+}
+#kanban-panel-content {
+    width: 100%;
+    height: 100%;
+    background-color: #e9edef;
+    display: flex;
+    flex-direction: column;
+    position: relative; /* Para os modais internos */
+}
+.kanban-header {
+    padding: 0 24px;
+    background-color: #008069;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 80px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+.kanban-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 300;
+}
+.kanban-indicators {
+    display: flex;
+    gap: 15px;
+    font-size: 13px;
+    align-items: center;
+}
+.kanban-search {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+#kanban-search-input {
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid #d1d7db;
+    font-size: 14px;
+}
+.kanban-search button {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+}
+.kanban-indicators span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.kanban-header .close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+}
+/* --- ESTILOS DO FORMULÁRIO NA SIDEBAR --- */
+#crm-sidebar .form-group { margin-bottom: 16px; }
+#crm-sidebar .form-group label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: #3b4a54; }
+#crm-sidebar .form-group input, #crm-sidebar .form-group select, #crm-sidebar .form-group textarea { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #d1d7db; font-size: 14px; box-sizing: border-box; }
+#crm-sidebar textarea { min-height: 100px; resize: vertical; }
+#crm-sidebar .fieldset { border: 1px solid #d1d7db; border-radius: 8px; padding: 10px 16px; margin-top: 20px; }
+#crm-sidebar .fieldset legend { font-weight: 600; font-size: 13px; padding: 0 5px; margin-left: 5px; color: #3b4a54; }
+#crm-sidebar .action-button { width: 100%; padding: 12px; margin-top: 20px; background-color: #00a884; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 600; }
+#crm-sidebar .action-button:hover { background-color: #008069; }
+#post-save-view { text-align: center; padding-top: 40px; }
+#post-save-view h3 { color: #008069; font-size: 18px; margin-bottom: 20px; }
+.post-save-actions { display: flex; flex-direction: column; gap: 15px; }
+.post-save-action-btn { width: 100%; padding: 12px; border: 1px solid #008069; color: #008069; background-color: #fff; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 600; transition: all 0.2s ease; }
+.post-save-action-btn:hover { background-color: #008069; color: white; }
+
+
+/* --- COMPONENTES DO KANBAN --- */
+.kanban-board { flex-grow: 1; padding: 20px; overflow-x: auto; display: flex; align-items: flex-start; gap: 20px; }
+.kanban-column { background-color: #f0f2f5; border-radius: 8px; width: 320px; flex-shrink: 0; display: flex; flex-direction: column; max-height: 100%; }
+.kanban-column h3 { position: relative; padding: 12px 40px 12px 16px; margin: 0; font-size: 16px; font-weight: 600; color: #3b4a54; border-radius: 8px 8px 0 0; cursor: default; }
+.kanban-column:not(:first-child) h3:hover { cursor: pointer; background-color: rgba(0,0,0,0.04); }
+.kanban-column h3[contenteditable="true"] { background-color: white; color: black; outline: 2px solid #00a884; cursor: text; }
+.column-total { font-size: 13px; color: #444; padding: 4px 16px; }
+.column-count { font-size: 12px; color: #555; padding: 2px 16px; }
+.kanban-items { padding: 8px; flex-grow: 1; overflow-y: auto; min-height: 50px; }
+.add-column-container { width: 320px; flex-shrink: 0; }
+.add-column-btn { width: 100%; padding: 12px; background-color: rgba(0, 0, 0, 0.05); border: 2px dashed #a0aec0; border-radius: 8px; color: #4a5568; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; }
+.add-column-btn:hover { background-color: rgba(0, 0, 0, 0.1); border-color: #718096; }
+.delete-column-btn { position: absolute; top: 50%; right: 12px; transform: translateY(-50%); width: 24px; height: 24px; border: none; border-radius: 50%; background-color: transparent; color: #a0aec0; cursor: pointer; display: none; align-items: center; justify-content: center; font-size: 20px; line-height: 1; }
+.kanban-column:hover .delete-column-btn { display: flex; }
+.delete-column-btn:hover { background-color: #e53e3e; color: white; }
+
+/* --- Estilos para os Cards do Kanban --- */
+.kanban-card { position: relative; background-color: #fff; border-radius: 6px; padding: 12px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.08); border-left: 4px solid #4299e1; }
+.kanban-card.dragging { opacity: 0.5; transform: rotate(2deg); cursor: grabbing; }
+.task-card { border-left-color: #f59e0b; cursor: default; }
+.delete-task-btn { position: absolute; top: 5px; right: 5px; width: 20px; height: 20px; border-radius: 50%; border: none; background-color: #e2e8f0; color: #718096; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; line-height: 1; opacity: 0; transition: opacity .2s ease; }
+.kanban-card:hover .delete-task-btn { opacity: 1; }
+.delete-task-btn:hover { background-color: #f56565; color: white; }
+.task-card .card-highlight { font-size: 15px; font-weight: 600; color: #1a202c; margin-bottom: 8px; padding-right: 20px; }
+.task-card .card-notes { font-size: 14px; color: #4a5568; white-space: pre-wrap; }
+.task-card .card-creation-date { font-size: 11px; color: #a0aec0; margin-top: 8px; text-align: right; }
+.card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.card-photo {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.card-info h4 { margin: 0; font-size: 16px; font-weight: 700; color: #1a202c; }
+.card-info p { margin: 0; font-size: 13px; color: #718096; }
+.card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.card-tag { background-color: #e2e8f0; color: #4a5568; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+.card-deals-container { margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; }
+.deal-item { font-size: 13px; color: #4a5568; margin-bottom: 4px; }
+.deal-item strong { color: #2d3748; }
+
+/* --- Estilos para os Modais --- */
+.crm-modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #fff; width: 500px; max-width: 90%; border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.3); z-index: 2002; display: none; }
+.crm-modal-header { padding: 16px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center; }
+.crm-modal-header h3 { margin: 0; font-size: 18px; }
+.crm-modal-header .close-btn { font-size: 24px; background: none; border: none; cursor: pointer; color: #666; }
+.crm-modal-content { padding: 20px; }
+.crm-modal-footer { padding: 16px; border-top: 1px solid #e0e0e0; text-align: right; }
+.crm-modal-footer button { padding: 10px 16px; border: none; border-radius: 6px; background-color: #00a884; color: white; font-weight: 600; cursor: pointer; font-size: 14px; }
+.crm-modal-footer button:hover { background-color: #008069; }
+
+/* --- Painel de Verificação Automática --- */
+#precheck-view {
+    text-align: center;
+}
+#precheck-photo {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+    margin: 0 auto 20px;
+}
+
+/* --- Painel de Edição de Cards --- */
+#card-edit-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 380px;
+    height: 100%;
+    background-color: #f0f2f5;
+    border-left: 1px solid #d1d7db;
+    transform: translateX(100%);
+    transition: transform 0.3s ease-in-out;
+    display: none;
+    flex-direction: column;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.1);
+    z-index: 2001;
+}
+#card-edit-panel.visible {
+    display: flex;
+    transform: translateX(0) !important;
+}
+#card-edit-panel .form-group input,
+#card-edit-panel .form-group select,
+#card-edit-panel .form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #d1d7db;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+#card-edit-panel textarea { min-height: 100px; resize: vertical; }
+#save-edit-btn {
+    width: auto;
+    padding: 10px 20px;
+    margin: 20px;
+    background-color: #00a884;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    align-self: flex-start;
+}
+#save-edit-btn:hover { background-color: #008069; }
+.task-client-name { font-size: 13px; color: #4a5568; margin-top: 4px; }
+#toast-message {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: #00a884;
+    color: white;
+    padding: 10px 16px;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    z-index: 3000;
+    display: none;
+}

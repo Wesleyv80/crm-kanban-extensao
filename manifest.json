@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "CRM Kanban WhatsApp",
+  "description": "Gerencie leads e tarefas diretamente no WhatsApp Web.",
+  "version": "15.0",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://web.whatsapp.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://web.whatsapp.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "style.css"
+      ]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "panel_icon.svg",
+        "placeholder.png"
+      ],
+      "matches": [
+        "https://web.whatsapp.com/*"
+      ]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'",
+    "script-src": ["'self'", "'wasm-unsafe-eval'", "https://cdn.jsdelivr.net/npm/"]
+  }
+}
