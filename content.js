@@ -880,10 +880,6 @@ function capturarEPreencherDadosDoContato() {
     }
 }
 
-window.addEventListener('load', () => {
-    setTimeout(buildUI, 2000);
-});
-
 (function () {
     if (document.getElementById("barra-crm-direita")) {
         console.log("🔄 Barra lateral direita já existe.");
