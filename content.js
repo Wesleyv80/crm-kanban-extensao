@@ -947,3 +947,50 @@ function capturarEPreencherDadosDoContato() {
     barra.appendChild(btnCadastro);
     document.body.appendChild(barra);
 })();
+
+// 🔧 Ajusta botões já existentes com imagens e ações
+
+const iconeCRM = document.createElement("img");
+iconeCRM.src = chrome.runtime.getURL("crm.png");
+iconeCRM.alt = "CRM";
+iconeCRM.style.width = "32px";
+iconeCRM.style.height = "32px";
+iconeCRM.style.marginBottom = "6px";
+
+const iconeCadastro = document.createElement("img");
+iconeCadastro.src = chrome.runtime.getURL("cadastro.png");
+iconeCadastro.alt = "Cadastro";
+iconeCadastro.style.width = "32px";
+iconeCadastro.style.height = "32px";
+iconeCadastro.style.marginBottom = "6px";
+
+const botoes = document.querySelectorAll("#barra-crm-direita .crm-action-button");
+
+if (botoes.length >= 2) {
+    const btnCRM = botoes[0];
+    const btnCadastro = botoes[1];
+
+    btnCRM.title = "Kanban";
+    btnCRM.innerHTML = "";
+    btnCRM.appendChild(iconeCRM);
+    btnCRM.onclick = () => {
+        if (typeof renderKanbanBoard === "function") {
+            renderKanbanBoard();
+            const painel = document.getElementById("kanban-panel-container");
+            if (painel) painel.classList.add("visible");
+        }
+    };
+
+    btnCadastro.title = "Cadastro";
+    btnCadastro.innerHTML = "";
+    btnCadastro.appendChild(iconeCadastro);
+    btnCadastro.onclick = async () => {
+        if (typeof capturarDadosCompletos === "function" && typeof showPrecheckPanel === "function") {
+            const dados = await capturarDadosCompletos();
+            showPrecheckPanel(dados);
+        }
+    };
+} else {
+    console.warn("⚠️ Botões da barra lateral não encontrados ou incompletos.");
+}
+
