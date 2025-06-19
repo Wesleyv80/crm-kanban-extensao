@@ -39,39 +39,10 @@ function resetCardEditForm() {
     document.getElementById('edit-gordurinha').value = '';
 }
 
-async function capturarDadosCompletos() {
-    const delay = ms => new Promise(res => setTimeout(res, ms));
-    await delay(800);
-
-    const nomeSpan = Array.from(document.querySelectorAll('span')).find(el =>
-        el.offsetHeight > 0 &&
-        el.innerText.trim().length >= 4 &&
-        el.innerText.trim().split(' ').length >= 2 &&
-        !el.innerText.match(/\d/) &&
-        !el.innerText.startsWith('+')
-    );
-    const nome = nomeSpan ? nomeSpan.innerText.trim() : null;
-
-    let telefone = null;
-    const painelInfo = document.querySelector('div[data-id]');
-    const dataId = painelInfo && painelInfo.getAttribute('data-id');
-    if (dataId) {
-        const match = dataId.match(/^[^_]*_([^_]+)_/);
-        if (match) {
-            telefone = formatarTelefone(match[1]);
-        }
-    }
-
-    let imagem = null;
-    const imgPainel = document.querySelector('div[role="button"] img[src*="whatsapp.net"][src*="s96x96"]');
-    if (imgPainel && imgPainel.src) {
-        imagem = imgPainel.src;
-    }
-
-    return { nome, telefone, imagem };
-}
+// capturarDadosCompletos() is now removed. Its logic is merged into observadorDeContato.getConsolidatedContactInfo()
 
 function formatarTelefone(numero) {
+    if (!numero) return ""; // Handle null, undefined, or empty string input
     const apenasNumeros = numero.replace(/\D/g, '');
     if (apenasNumeros.length === 11) {
         return `(${apenasNumeros.slice(2, 4)}) ${apenasNumeros.slice(4, 9)}-${apenasNumeros.slice(9)}`;
@@ -84,38 +55,75 @@ function formatarTelefone(numero) {
 // --- MÓDULO: OBSERVADOR DE CONTATO ---
 const observadorDeContato = (() => {
     let captureInterval = null;
-    function capturarContatoAtivo() {
-        try {
-            console.log('📲 Iniciando captura de dados do contato...');
 
-            const nomeSpan = Array.from(document.querySelectorAll('span')).find(el =>
-                el.offsetHeight > 0 &&
-                el.innerText.trim().length >= 4 &&
-                el.innerText.trim().split(' ').length >= 2 &&
-                !el.innerText.match(/\d/) &&
-                !el.innerText.startsWith('+')
-            );
-            const nome = nomeSpan ? nomeSpan.innerText.trim() : null;
+    function getConsolidatedContactInfo() {
+        // Para Nome: Lógica do span detalhado
+        const nomeSpan = Array.from(document.querySelectorAll('span')).find(el =>
+            el.offsetHeight > 0 &&
+            el.innerText.trim().length >= 4 &&
+            el.innerText.trim().split(' ').length >= 2 &&
+            !el.innerText.match(/\d/) &&
+            !el.innerText.startsWith('+')
+        );
+        const nome = nomeSpan ? nomeSpan.innerText.trim() : null;
 
-            const imgEl = document.querySelector('header img');
-            const imagem = imgEl && imgEl.src.includes('whatsapp.net') ? imgEl.src : null;
-
-            let telefone = null;
+        // Para Telefone: Múltiplas estratégias
+        let telefone = null;
+        // 1. div[data-id]
+        const painelInfo = document.querySelector('div[data-id]');
+        const dataId = painelInfo && painelInfo.getAttribute('data-id');
+        if (dataId) {
+            const match = dataId.match(/^[^_]*_([^_]+)_/);
+            if (match && match[1]) {
+                telefone = formatarTelefone(match[1]);
+            }
+        }
+        // 2. a[href^="tel:"]
+        if (!telefone) {
             const linkTel = document.querySelector('a[href^="tel:"]');
             if (linkTel) {
-                telefone = linkTel.innerText.trim();
-            } else {
-                const candidato = Array.from(document.querySelectorAll('div, span'))
-                    .map(el => el.innerText.trim())
-                    .find(txt => /^\+\d{2}\s?\d{2}\s?\d{4,5}-\d{4}$/.test(txt));
-                telefone = candidato || null;
+                telefone = formatarTelefone(linkTel.innerText.trim());
             }
+        }
+        // 3. Regex
+        if (!telefone) {
+            const candidato = Array.from(document.querySelectorAll('div, span'))
+                .map(el => el.innerText.trim())
+                .find(txt => /^\+\d{2}\s?\d{2}\s?\d{4,5}-\d{4}$/.test(txt));
+            if (candidato) {
+                telefone = formatarTelefone(candidato);
+            }
+        }
 
-            if (!nome && !telefone && !imagem) return null;
+        // Para Imagem: Múltiplas estratégias
+        let imagem = null;
+        // 1. div[role="button"] img[src*="whatsapp.net"][src*="s96x96"]
+        const imgPainel = document.querySelector('div[role="button"] img[src*="whatsapp.net"][src*="s96x96"]');
+        if (imgPainel && imgPainel.src) {
+            imagem = imgPainel.src;
+        }
+        // 2. header img[src*="whatsapp.net"]
+        if (!imagem) {
+            const imgEl = document.querySelector('header img');
+            if (imgEl && imgEl.src.includes('whatsapp.net')) {
+                imagem = imgEl.src;
+            }
+        }
 
-            return { imagem, nome, telefone };
+        if (!nome && !telefone && !imagem) {
+            // console.log("Nenhum dado de contato encontrado pelas estratégias combinadas."); // Optional: too noisy for MutationObserver
+            return null;
+        }
+        return { nome, telefone, imagem };
+    }
+
+    // capturarContatoAtivo agora usa a lógica consolidada.
+    function capturarContatoAtivo() {
+        try {
+            // console.log('📲 Iniciando captura de dados do contato (via wrapper)...');
+            return getConsolidatedContactInfo();
         } catch (erro) {
-            console.error('Erro ao capturar dados do contato:', erro);
+            console.error('Erro ao capturar dados do contato (wrapper):', erro);
             return null;
         }
     }
@@ -167,7 +175,8 @@ const observadorDeContato = (() => {
         }
     }
 
-    return { iniciar, capturarContatoAtivo };
+    // Expõe a nova função consolidada e a original (que agora é wrapper)
+    return { iniciar, capturarContatoAtivo, getConsolidatedContactInfo };
 })();
 function openClientForm(data = {}) {
     document.getElementById('precheck-view').style.display = 'none';
@@ -205,22 +214,71 @@ async function saveBoardState() {
     const board = document.querySelector('.kanban-board');
     const columns = board.querySelectorAll('.kanban-column');
     let crmData = await carregarDados("kanban_data");
-    let allClients = []; (crmData.columns || []).forEach(col => { if(col.clients) allClients.push(...col.clients); }); Object.values(crmData.clients || {}).forEach(client => { if(!allClients.find(c => c.id === client.id)) allClients.push(client); });
-    let allTasks = []; (crmData.columns || []).forEach(col => { if(col.tasks) allTasks.push(...col.tasks); });
+
+    // Ensure crmData.clients exists
+    if (!crmData.clients) {
+        crmData.clients = {};
+    }
+
+    // Collect all task IDs from the board to preserve tasks correctly
+    let allTasksOnBoard = [];
+    columns.forEach(columnEl => {
+        const cards = columnEl.querySelectorAll('.kanban-card.task-card');
+        cards.forEach(cardEl => {
+            allTasksOnBoard.push(cardEl.id);
+        });
+    });
+
+    // Preserve existing tasks from crmData that are still on the board
+    let preservedTasks = [];
+    if (crmData.columns) {
+        crmData.columns.forEach(col => {
+            if (col.tasks) {
+                col.tasks.forEach(task => {
+                    if (allTasksOnBoard.includes(task.id)) {
+                        preservedTasks.push(task);
+                    }
+                });
+            }
+        });
+    }
+
+
     let newColumns = [];
     columns.forEach(columnEl => {
         const columnTitle = columnEl.dataset.id;
         const columnObj = { title: columnTitle, clients: [], tasks: [] };
         const cards = columnEl.querySelectorAll('.kanban-card');
+
         cards.forEach(cardEl => {
-            if (cardEl.classList.contains('task-card')) { const task = allTasks.find(t => t.id === cardEl.id); if(task) columnObj.tasks.push(task); }
-            else { const client = allClients.find(c => c.id === cardEl.id); if (client) columnObj.clients.push(client); }
+            if (cardEl.classList.contains('task-card')) {
+                // Find the task from the preserved list
+                const task = preservedTasks.find(t => t.id === cardEl.id);
+                if (task) {
+                    columnObj.tasks.push(task);
+                }
+            } else {
+                // Client card
+                const clientId = cardEl.id;
+                if (clientId && crmData.clients[clientId]) { // Ensure client exists in global store
+                    columnObj.clients.push(clientId); // Store only ID in column
+                } else if (clientId) {
+                    // This case should ideally not happen if clients are always added to crmData.clients first.
+                    // However, as a fallback, if we find a card on the board not in crmData.clients,
+                    // we should try to retrieve its data (e.g., from an old structure if necessary)
+                    // or log a warning. For now, we'll log and skip.
+                    console.warn(`Client card ${clientId} found on board but not in crmData.clients. State might be inconsistent.`);
+                }
+            }
         });
         newColumns.push(columnObj);
     });
+
     crmData.columns = newColumns;
+    // Client objects are already in crmData.clients and updated there directly.
+    // saveBoardState now primarily saves the column structure (with client IDs) and tasks.
     await salvarDados("kanban_data", crmData);
-    console.log("Estado do painel salvo.");
+    console.log("Estado do painel salvo.", crmData);
     await updateDashboard();
 }
 
@@ -372,12 +430,28 @@ function createColumnElement(columnData, crmData) {
     countEl.textContent = `(${((columnData.clients || []).length + (columnData.tasks || []).length)} cards)`;
     const itemsContainer = document.createElement('div');
     itemsContainer.className = 'kanban-items';
+
     if (columnData.tasks) {
         columnData.tasks.forEach(task => itemsContainer.appendChild(createTaskCardElement(task, crmData)));
     }
-    if (columnData.clients) {
-        columnData.clients.forEach(client => itemsContainer.appendChild(createClientCardElement(client)));
+
+    if (columnData.clients && crmData.clients) { // columnData.clients is now an array of IDs
+        columnData.clients.forEach(clientId => {
+            const clientObject = crmData.clients[clientId];
+            if (clientObject) {
+                itemsContainer.appendChild(createClientCardElement(clientObject));
+            } else {
+                console.warn(`Client ID ${clientId} found in column '${columnData.title}' but not in crmData.clients. Card will not be rendered.`);
+                // Optionally, remove this orphaned ID from the column to self-heal
+                // This would require modifying crmData here and potentially saving,
+                // which might be too much for a render function.
+                // For now, just skip rendering.
+            }
+        });
+    } else if (columnData.clients && !crmData.clients) {
+        console.error("crmData.clients is missing, cannot render client cards for column:", columnData.title);
     }
+
     column.appendChild(title);
     column.appendChild(countEl);
     if (columnData.title !== 'Tarefas Pendentes') column.appendChild(totalEl);
@@ -386,13 +460,21 @@ function createColumnElement(columnData, crmData) {
 }
 async function updateColumnTotals(crmData) {
     if (!crmData) crmData = await carregarDados('kanban_data');
+    if (!crmData || !crmData.clients) { // Ensure crmData.clients is available
+        console.warn("updateColumnTotals: crmData.clients is not available. Totals may be inaccurate.");
+        return;
+    }
     const columns = document.querySelectorAll('.kanban-column');
     columns.forEach(colEl => {
         const colData = crmData.columns.find(c => c.title === colEl.dataset.id);
         if (!colData || colData.title === 'Tarefas Pendentes') return;
+
         let totalValor = 0;
-        (colData.clients || []).forEach(client => {
-            (client.deals || []).forEach(deal => { totalValor += deal.valor || 0; });
+        (colData.clients || []).forEach(clientId => { // Iterate over client IDs
+            const client = crmData.clients[clientId];
+            if (client && client.deals) {
+                client.deals.forEach(deal => { totalValor += deal.valor || 0; });
+            }
         });
         const totalEl = colEl.querySelector('.column-total');
         if (totalEl) {
@@ -400,14 +482,19 @@ async function updateColumnTotals(crmData) {
         }
         const countEl = colEl.querySelector('.column-count');
         if (countEl) {
-            countEl.textContent = `(${((colData.clients || []).length + (colData.tasks || []).length)} cards)`;
+            const clientCount = (colData.clients || []).length;
+            const taskCount = (colData.tasks || []).length;
+            countEl.textContent = `(${(clientCount + taskCount)} cards)`;
         }
     });
 }
 
 async function updateDashboard() {
     const crmData = await carregarDados("kanban_data");
-    if (!crmData || !crmData.columns) return;
+    if (!crmData || !crmData.columns || !crmData.clients) { // Ensure crmData.clients is available
+        console.warn("updateDashboard: crmData or its properties (columns/clients) are not available. Dashboard may be inaccurate.");
+        return;
+    }
     let totalDeals = 0;
     let totalTasks = 0;
     let totalValor = 0;
@@ -415,9 +502,13 @@ async function updateDashboard() {
         if (column.title === 'Tarefas Pendentes') {
             totalTasks += (column.tasks || []).length;
         }
-        (column.clients || []).forEach(client => {
-            totalDeals += (client.deals || []).length;
-            (client.deals || []).forEach(deal => { totalValor += deal.valor || 0; });
+        // Iterate over client IDs in the column and fetch from crmData.clients
+        (column.clients || []).forEach(clientId => {
+            const client = crmData.clients[clientId];
+            if (client) {
+                totalDeals += (client.deals || []).length;
+                (client.deals || []).forEach(deal => { totalValor += deal.valor || 0; });
+            }
         });
     });
     const dealsEl = document.querySelector('#indicator-deals strong');
@@ -433,10 +524,67 @@ async function renderKanbanBoard() {
     if (!boardContainer) return;
     boardContainer.innerHTML = '<p>Carregando...</p>';
     let crmData = await carregarDados("kanban_data");
-    if (!crmData || !crmData.columns) {
+
+    // Migration logic
+    if (crmData && crmData.columns) {
+        let needsMigration = false;
+        if (!crmData.clients) {
+            crmData.clients = {};
+            needsMigration = true;
+        }
+        for (const column of crmData.columns) {
+            if (column.clients && column.clients.length > 0 && typeof column.clients[0] === 'object' && column.clients[0] !== null && column.clients[0].id) {
+                needsMigration = true;
+                const clientIds = [];
+                for (const clientObj of column.clients) {
+                    if (clientObj && clientObj.id) { // Ensure clientObj and its id are valid
+                        if (!crmData.clients[clientObj.id]) {
+                            crmData.clients[clientObj.id] = clientObj;
+                        }
+                        clientIds.push(clientObj.id);
+                    }
+                }
+                column.clients = clientIds;
+            } else if (column.clients && column.clients.length > 0 && typeof column.clients[0] !== 'string') {
+                // This case implies that column.clients[0] is not an object with an id (already string ID or malformed)
+                // If it's not an object and not a string, it's likely malformed.
+                // Consider if any specific recovery is needed or if clearing is acceptable.
+                // For now, let's ensure all elements are strings if the first one suggests it's already migrated or mixed.
+                let allStrings = true;
+                for(const item of column.clients){
+                    if(typeof item !== 'string'){
+                        allStrings = false;
+                        break;
+                    }
+                }
+                if(!allStrings){
+                    console.warn("Coluna com dados de clientes potencialmente malformados:", column.title, column.clients);
+                    // Attempt to recover IDs if possible, or clear
+                    const recoveredIds = [];
+                    for(const item of column.clients){
+                        if(typeof item === 'object' && item !== null && item.id){
+                             if (!crmData.clients[item.id]) {
+                                crmData.clients[item.id] = item;
+                            }
+                            recoveredIds.push(item.id);
+                        } else if (typeof item === 'string'){
+                            recoveredIds.push(item);
+                        }
+                    }
+                    column.clients = recoveredIds;
+                    if (recoveredIds.length !== column.clients.length) needsMigration = true; // if any recovery happened
+                }
+            }
+        }
+        if (needsMigration) {
+            console.log("Migrando dados para novo formato...", crmData);
+            await salvarDados("kanban_data", crmData);
+        }
+    } else if (!crmData || !crmData.columns) { // Initialize if no data exists
         crmData = { clients: {}, columns: [{ title: 'Tarefas Pendentes', tasks: [] }, { title: 'Em Negociação', clients: [] }] };
         await salvarDados("kanban_data", crmData);
     }
+
     boardContainer.innerHTML = '';
     crmData.columns.forEach(columnData => boardContainer.appendChild(createColumnElement(columnData, crmData)));
     const addColumnContainer = document.createElement('div');
@@ -454,6 +602,7 @@ async function openCardEditPanel(id, type) {
     const crmData = await carregarDados('kanban_data');
     let data;
     if (type === 'task') {
+        // Task data retrieval remains unchanged as tasks are still directly in columns
         for (const col of crmData.columns || []) {
             const t = (col.tasks || []).find(tsk => tsk.id === id);
             if (t) { data = t; break; }
@@ -470,13 +619,19 @@ async function openCardEditPanel(id, type) {
         document.querySelector("label[for='edit-phone']").textContent = 'Informações';
         document.getElementById('edit-name').value = data?.highlight || '';
         document.getElementById('edit-phone').value = data?.notes || '';
-    } else {
-        data = crmData.clients?.[id];
-        if (!data) {
-            for (const col of crmData.columns || []) {
-                data = (col.clients || []).find(c => c.id === id);
-                if (data) break;
-            }
+    } else { // Client type
+        if (crmData.clients && crmData.clients[id]) {
+            data = crmData.clients[id];
+        } else {
+            console.warn(`Client with ID ${id} not found in crmData.clients during openCardEditPanel.`);
+            // Optionally, could add back the loop through columns as a fallback for robustness,
+            // but the primary source should be crmData.clients.
+            // for (const col of crmData.columns || []) {
+            //    // This part would be tricky because columns now store IDs.
+            //    // You'd have to check if col.clients.includes(id) and then fetch from crmData.clients.
+            //    // This implies data inconsistency if it's in a column but not crmData.clients.
+            // }
+            // For now, if not in crmData.clients, data will be undefined, and the form will be empty.
         }
         document.getElementById('edit-task-client-group').style.display = 'none';
         document.querySelector("label[for='edit-name']").textContent = 'Nome';
@@ -517,15 +672,10 @@ async function saveCardEdit() {
                 break;
             }
         }
-    } else {
-        let client = crmData.clients?.[id];
-        if (!client) {
-            for (const col of crmData.columns || []) {
-                client = (col.clients || []).find(c => c.id === id);
-                if (client) break;
-            }
-        }
-        if (client) {
+    } else { // Client type
+        if (crmData.clients && crmData.clients[id]) {
+            let client = crmData.clients[id];
+            // Update client object directly in crmData.clients
             client.name = document.getElementById('edit-name').value;
             client.phone = document.getElementById('edit-phone').value;
             client.origin = document.getElementById('edit-origin').value;
@@ -542,6 +692,12 @@ async function saveCardEdit() {
             client.deals[0].valor = valor;
             client.deals[0].mensalidade = mensalidade;
             client.deals[0].gordurinha = gordurinha;
+        } else {
+            console.warn(`Client with ID ${id} not found in crmData.clients during saveCardEdit. Cannot save changes.`);
+            showToast('Erro: Cliente não encontrado. Não foi possível salvar.');
+            closeCardEditPanel();
+            await renderKanbanBoard(); // Re-render to reflect current state
+            return; // Exit to prevent further issues
         }
     }
     await salvarDados('kanban_data', crmData);
@@ -559,7 +715,51 @@ function closeCardEditPanel() {
 }
 // --- FUNÇÃO PRINCIPAL QUE CONSTRÓI A UI ---
 function buildUI() {
-    if (document.getElementById('crm-fab-container')) return;
+    // Check if the new sidebar is already built to prevent duplication if script re-runs.
+    if (document.getElementById('barra-crm-direita')) {
+        // If new sidebar exists, assume UI is built by this refactored version.
+        // Optionally, also check for 'crm-fab-container' if it should always co-exist.
+        return;
+    }
+    // Simple check for old FAB container to prevent multiple FABs if old logic hasn't been removed yet.
+    if (document.getElementById('crm-fab-container')) {
+        console.warn("buildUI: crm-fab-container already exists. Consider full cleanup if old sidebar logic is still present.");
+        // Not returning here, as we want to proceed to build the NEW sidebar.
+        // Old sidebar removal will be a separate step.
+    }
+
+    // Helper function for right sidebar buttons (defined inside buildUI)
+    function criarBotaoBarraDireita(imgSrc, title, onClickCallback) {
+        const button = document.createElement("button");
+        button.className = "crm-sidebar-button";
+        button.title = title;
+
+        const img = document.createElement("img");
+        img.src = chrome.runtime.getURL(imgSrc);
+        img.alt = title;
+        Object.assign(img.style, {
+            width: "32px",
+            height: "32px",
+        });
+
+        button.appendChild(img);
+        button.onclick = onClickCallback;
+
+        Object.assign(button.style, {
+            background: "#fff",
+            padding: "4px",
+            borderRadius: "8px",
+            boxShadow: "0 0 5px rgba(0,0,0,0.2)",
+            cursor: "pointer",
+            border: "none",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "44px",
+            height: "44px"
+        });
+        return button;
+    }
 
     const mainHTML = `
         <div id="crm-sidebar">
@@ -632,11 +832,70 @@ function buildUI() {
     document.body.insertAdjacentHTML('beforeend', mainHTML);
     document.body.insertAdjacentHTML("beforeend", "<div id=\"toast-message\"></div>");
     
-    const fabContainer = document.createElement('div'); fabContainer.className = 'fab-container'; fabContainer.id = 'crm-fab-container';
-    const kanbanBtn = document.createElement('button'); kanbanBtn.className = 'crm-action-button'; kanbanBtn.title = 'Abrir CRM Kanban'; kanbanBtn.innerHTML = `<img src="${chrome.runtime.getURL('panel_icon.svg')}" alt="Abrir CRM">`;
-    const addClientBtn = document.createElement('button'); addClientBtn.className = 'crm-action-button'; addClientBtn.title = 'Adicionar Cliente'; addClientBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" viewBox="0 0 16 16"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg>`;
-    fabContainer.appendChild(addClientBtn); fabContainer.appendChild(kanbanBtn);
-    document.body.appendChild(fabContainer);
+    // Lines for fabContainer, kanbanBtn, addClientBtn creation and appending are removed.
+    console.log("FAB elements (fabContainer, kanbanBtn, addClientBtn) creation and appending removed.");
+
+    // --- Right Sidebar (barra-crm-direita) Creation ---
+    const appElement = document.getElementById("app");
+    if (appElement) {
+        // Ensure this doesn't conflict if old IIFE also runs.
+        // The old IIFE has a check for "barra-crm-direita" existence.
+        appElement.style.marginRight = "60px";
+        appElement.style.width = "calc(100vw - 60px)";
+    }
+
+    const barraDireita = document.createElement("div");
+    barraDireita.id = "barra-crm-direita"; // This ID is crucial
+    Object.assign(barraDireita.style, {
+        position: "fixed",
+        top: "0",
+        right: "0",
+        width: "60px",
+        height: "100vh",
+        backgroundColor: "#f0f2f5",
+        borderLeft: "1px solid #ccc",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "flex-start",
+        flexDirection: "column",
+        zIndex: "9999999",
+        paddingTop: "20px",
+        gap: "15px",
+    });
+
+    const btnAbrirKanban = criarBotaoBarraDireita(
+        "crm.png",
+        "Abrir CRM Kanban",
+        () => {
+            if (typeof renderKanbanBoard === "function") {
+                renderKanbanBoard();
+                const painel = document.getElementById("kanban-panel-container");
+                if (painel) painel.classList.add("visible");
+            } else {
+                console.error("renderKanbanBoard function not found");
+            }
+        }
+    );
+    barraDireita.appendChild(btnAbrirKanban);
+
+    const btnNovoCadastro = criarBotaoBarraDireita(
+        "cadastro.png",
+        "Novo Cadastro",
+        async () => {
+            if (typeof observadorDeContato !== 'undefined' && typeof observadorDeContato.getConsolidatedContactInfo === 'function' && typeof showPrecheckPanel === 'function') {
+                const delay = ms => new Promise(res => setTimeout(res, ms));
+                await delay(800);
+                const dados = await observadorDeContato.getConsolidatedContactInfo();
+                showPrecheckPanel(dados);
+            } else {
+                console.error("Required functions for Novo Cadastro not found (getConsolidatedContactInfo or showPrecheckPanel)");
+            }
+        }
+    );
+    barraDireita.appendChild(btnNovoCadastro);
+    document.body.appendChild(barraDireita);
+    console.log("Nova barra lateral direita adicionada por buildUI.");
+    // --- End of Right Sidebar Creation ---
 
     const quick = document.createElement('div');
     quick.className = 'quick-actions';
@@ -682,31 +941,58 @@ function buildUI() {
     async function populateClientSelect(selectId = 'task-client', selectedId = null) {
         const select = document.getElementById(selectId);
         if (!select) return;
-        select.innerHTML = '';
+    select.innerHTML = ''; // Clear existing options
         const crmData = await carregarDados('kanban_data');
-        const clients = [];
-        if (crmData.clients) clients.push(...Object.values(crmData.clients));
-        (crmData.columns || []).forEach(col => { if (col.clients) clients.push(...col.clients); });
-        clients.forEach(c => {
-            const opt = document.createElement('option');
-            opt.value = c.id;
-            opt.textContent = c.name ? `${c.name} - ${c.phone}` : c.phone;
-            select.appendChild(opt);
-        });
-        if (clients.length > 0) select.value = selectedId || clients[0].id;
+
+    let clientList = [];
+    if (crmData && crmData.clients) {
+        clientList = Object.values(crmData.clients);
+    } else {
+        console.warn("populateClientSelect: crmData.clients is not available.");
     }
 
-    addClientBtn.onclick = async () => {
-        const dados = await capturarDadosCompletos();
-        console.log('🎯 Resultado final:', dados);
-        showPrecheckPanel(dados);
-    };
+    // Sort clients by name for better UX
+    clientList.sort((a, b) => {
+        const nameA = a.name || a.phone || '';
+        const nameB = b.name || b.phone || ''; // Corrected: b.phone to b.phone
+        return nameA.localeCompare(nameB);
+    });
+
+    if (clientList.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = "";
+        opt.textContent = "Nenhum cliente cadastrado";
+        select.appendChild(opt);
+        select.disabled = true;
+        return;
+    }
+    select.disabled = false;
+
+    clientList.forEach(c => {
+        if (!c || !c.id) { // Basic check for valid client object and ID
+            console.warn("populateClientSelect: Invalid client object found", c);
+            return;
+        }
+            const opt = document.createElement('option');
+            opt.value = c.id;
+        opt.textContent = c.name ? `${c.name} (${c.phone || 'Sem telefone'})` : (c.phone || 'Cliente sem nome/telefone');
+            select.appendChild(opt);
+        });
+
+    if (selectedId && clientList.some(c => c.id === selectedId)) {
+        select.value = selectedId;
+    } else if (clientList.length > 0) {
+        select.value = clientList[0].id; // Default to first client if no valid selectedId or selectedId not found
+    }
+    }
+
+    // addClientBtn.onclick and kanbanBtn.onclick handlers for the removed FABs are now deleted.
+    // Note: addClientBtn and kanbanBtn variables would be undefined here if the previous step correctly removed their creation.
+    // This removal cleans up the orphaned event handler assignments.
+    console.log("FAB onclick handlers (addClientBtn.onclick, kanbanBtn.onclick) removed.");
+
     const quickActions = document.getElementById('crm-quick-actions');
-    kanbanBtn.onclick = () => {
-        renderKanbanBoard();
-        document.getElementById('kanban-panel-container').classList.add('visible');
-        if (quickActions) quickActions.style.display = 'flex';
-    };
+    // The following event listener is for the main kanban panel, not the FAB, so it should remain.
     document.getElementById('kanban-panel-content').addEventListener('click', (e) => {
         if (quickActions && !quickActions.contains(e.target)) quickActions.style.display = 'none';
     });
@@ -767,8 +1053,12 @@ function buildUI() {
         }
         lastSavedClientId = clientData.id; lastSavedIndicatorName = clientData.indicator ? clientData.indicator.name : '';
         const crmData = await carregarDados("kanban_data") || { clients: {}, columns: [] };
-        if (!crmData.clients) crmData.clients = {}; crmData.clients[lastSavedClientId] = clientData;
+        if (!crmData.clients) {
+            crmData.clients = {};
+        }
+        crmData.clients[clientData.id] = clientData; // Add/update client in the global store
         await salvarDados("kanban_data", crmData);
+        // lastSavedClientId is still important for linking a deal or task later
         document.getElementById('client-form-view').style.display = 'none';
         document.getElementById('post-save-view').style.display = 'block';
         document.getElementById('sidebar-title').innerText = 'Próximos Passos';
@@ -777,12 +1067,35 @@ function buildUI() {
     document.getElementById('sidebar-add-deal-btn').onclick = () => { document.getElementById('post-save-view').style.display = 'none'; document.getElementById('deal-form-view').style.display = 'block'; document.getElementById('sidebar-title').innerText = 'Novo Negócio'; };
     document.getElementById('save-deal-btn').onclick = async () => {
         const dealData = { title: document.getElementById('deal-title').value, valor: parseFloat(document.getElementById('deal-valor').value) || 0, mensalidade: parseFloat(document.getElementById('deal-mensalidade').value) || 0, gordurinha: parseFloat(document.getElementById('deal-gordurinha').value) || 0, creationDate: new Date().toLocaleDateString('pt-BR'), indicatorName: lastSavedIndicatorName };
-        const crmData = await carregarDados("kanban_data"); const newClient = crmData.clients[lastSavedClientId];
-        if (!newClient) { showToast('Erro: Cliente não encontrado para adicionar o negócio.'); return; }
-        if (!newClient.deals) newClient.deals = []; newClient.deals.push(dealData);
+        const crmData = await carregarDados("kanban_data");
+
+        if (!lastSavedClientId || !crmData.clients || !crmData.clients[lastSavedClientId]) {
+            showToast('Erro: Cliente não encontrado para adicionar o negócio. Salve o cliente primeiro.');
+            return;
+        }
+        const clientToUpdate = crmData.clients[lastSavedClientId];
+        if (!clientToUpdate.deals) clientToUpdate.deals = [];
+        clientToUpdate.deals.push(dealData);
+
         let dealColumn = crmData.columns.find(col => col.title === "Em Negociação");
-        if (!dealColumn) { crmData.columns.push({ title: "Em Negociação", clients: [] }); dealColumn = crmData.columns[crmData.columns.length - 1]; }
-        dealColumn.clients.unshift(newClient); delete crmData.clients[lastSavedClientId];
+        if (!dealColumn) {
+            // Find the 'Em Negociação' column or create it if it doesn's exist
+            const defaultColumnTitle = "Em Negociação";
+            dealColumn = crmData.columns.find(col => col.title === defaultColumnTitle);
+            if (!dealColumn) {
+                crmData.columns.push({ title: defaultColumnTitle, clients: [], tasks: [] });
+                dealColumn = crmData.columns[crmData.columns.length - 1];
+            }
+        }
+
+        // Add client ID to the column, ensuring no duplicates
+        if (!dealColumn.clients.includes(lastSavedClientId)) {
+            dealColumn.clients.unshift(lastSavedClientId); // Add ID to the beginning
+        }
+
+        // The client object remains in crmData.clients. Do NOT delete crmData.clients[lastSavedClientId].
+        // crmData.clients[lastSavedClientId] was already updated with the new deal.
+
         await salvarDados("kanban_data", crmData);
         await renderKanbanBoard();
         document.getElementById('deal-form-view').style.display = 'none';
@@ -880,117 +1193,9 @@ function capturarEPreencherDadosDoContato() {
     }
 }
 
-(function () {
-    if (document.getElementById("barra-crm-direita")) {
-        console.log("🔄 Barra lateral direita já existe.");
-        return;
-    }
+// The old IIFE for barra-crm-direita creation is removed by this change.
+// Its logic is now handled within buildUI().
 
-    const app = document.getElementById("app");
-    if (app) {
-        app.style.marginRight = "60px";
-        app.style.width = "calc(100vw - 60px)";
-    }
-
-    const barra = document.createElement("div");
-    barra.id = "barra-crm-direita";
-    Object.assign(barra.style, {
-        position: "fixed",
-        top: "0",
-        right: "0",
-        width: "60px",
-        height: "100vh",
-        backgroundColor: "#f0f2f5",
-        borderLeft: "1px solid #ccc",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "flex-start",
-        flexDirection: "column",
-        zIndex: "999999",
-        paddingTop: "10px",
-        gap: "10px",
-    });
-
-    function criarBotaoImagem(src, title, onClick) {
-        const img = document.createElement("img");
-        img.src = src;
-        img.alt = title;
-        img.title = title;
-        Object.assign(img.style, {
-            width: "36px",
-            height: "36px",
-            borderRadius: "8px",
-            cursor: "pointer",
-            background: "#fff",
-            padding: "4px",
-            boxShadow: "0 0 5px rgba(0,0,0,0.2)",
-        });
-        img.onclick = onClick;
-        return img;
-    }
-
-    const btnCRM = criarBotaoImagem("crm.png", "Abrir CRM", () => {
-        const painel = document.getElementById("painel-crm-kanban");
-        if (painel) {
-            painel.classList.add("visible");
-            painel.style.display = "block";
-        }
-    });
-
-    const btnCadastro = criarBotaoImagem("cadastro.png", "Novo Cadastro", () => {
-        if (window.openClientForm) {
-            window.openClientForm();
-        }
-    });
-
-    barra.appendChild(btnCRM);
-    barra.appendChild(btnCadastro);
-    document.body.appendChild(barra);
-})();
-
-// 🔧 Ajusta botões já existentes com imagens e ações
-
-const iconeCRM = document.createElement("img");
-iconeCRM.src = chrome.runtime.getURL("crm.png");
-iconeCRM.alt = "CRM";
-iconeCRM.style.width = "32px";
-iconeCRM.style.height = "32px";
-iconeCRM.style.marginBottom = "6px";
-
-const iconeCadastro = document.createElement("img");
-iconeCadastro.src = chrome.runtime.getURL("cadastro.png");
-iconeCadastro.alt = "Cadastro";
-iconeCadastro.style.width = "32px";
-iconeCadastro.style.height = "32px";
-iconeCadastro.style.marginBottom = "6px";
-
-const botoes = document.querySelectorAll("#barra-crm-direita .crm-action-button");
-
-if (botoes.length >= 2) {
-    const btnCRM = botoes[0];
-    const btnCadastro = botoes[1];
-
-    btnCRM.title = "Kanban";
-    btnCRM.innerHTML = "";
-    btnCRM.appendChild(iconeCRM);
-    btnCRM.onclick = () => {
-        if (typeof renderKanbanBoard === "function") {
-            renderKanbanBoard();
-            const painel = document.getElementById("kanban-panel-container");
-            if (painel) painel.classList.add("visible");
-        }
-    };
-
-    btnCadastro.title = "Cadastro";
-    btnCadastro.innerHTML = "";
-    btnCadastro.appendChild(iconeCadastro);
-    btnCadastro.onclick = async () => {
-        if (typeof capturarDadosCompletos === "function" && typeof showPrecheckPanel === "function") {
-            const dados = await capturarDadosCompletos();
-            showPrecheckPanel(dados);
-        }
-    };
-} else {
-    console.warn("⚠️ Botões da barra lateral não encontrados ou incompletos.");
-}
+// The block of code that adjusted old buttons (`iconeCRM`, `iconeCadastro`, etc.)
+// is also removed by this change as it's no longer needed.
 
