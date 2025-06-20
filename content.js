@@ -1199,3 +1199,4 @@ function capturarEPreencherDadosDoContato() {
 // The block of code that adjusted old buttons (`iconeCRM`, `iconeCadastro`, etc.)
 // is also removed by this change as it's no longer needed.
 
+buildUI();
