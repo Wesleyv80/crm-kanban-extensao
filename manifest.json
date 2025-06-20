@@ -29,7 +29,8 @@
     }
   ],
   "action": {
-    "default_icon": "panel_icon.svg"
+    "default_icon": "panel_icon.svg",
+    "default_popup": "popup.html"
   },
   "background": {
     "service_worker": "background.js",
