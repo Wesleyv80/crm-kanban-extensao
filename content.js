@@ -146,7 +146,7 @@ const observadorDeContato = (() => {
         document.getElementById('sidebar-title').innerText = 'Verificação Automática';
         sidebar.classList.add('visible');
 
-        window.lastCapturedContact = { name: nome, phone: telefone, photo: imagem };
+        globalThis.lastCapturedContact = { name: nome, phone: telefone, photo: imagem };
     }
 
     function tentarCapturarContatoRepetidamente() {
@@ -300,7 +300,7 @@ async function handleColumnRename(titleElement, oldName) {
     titleElement.contentEditable = true;
     titleElement.focus();
     const originalHTML = titleElement.innerHTML;
-    const selection = window.getSelection();
+    const selection = globalThis.getSelection();
     const range = document.createRange();
     range.selectNodeContents(titleElement);
     const deleteBtn = titleElement.querySelector('.delete-column-btn');
@@ -932,7 +932,7 @@ function buildUI() {
     }
 
     // Torna a função acessível globalmente para outros módulos
-    window.showPrecheckPanel = showPrecheckPanel;
+    globalThis.showPrecheckPanel = showPrecheckPanel;
 
     function hidePrecheckPanel() {
         document.getElementById('precheck-view').style.display = 'none';
@@ -1005,7 +1005,7 @@ function buildUI() {
         if (quickActions) quickActions.style.display = 'none';
     };
     document.getElementById('precheck-start-btn').onclick = () => {
-        const data = window.lastCapturedContact || precheckData || {};
+        const data = globalThis.lastCapturedContact || precheckData || {};
         openClientForm(data);
         hidePrecheckPanel();
     };
@@ -1182,8 +1182,8 @@ function capturarEPreencherDadosDoContato() {
 
         console.log('CRM Extensão: Novo contato ativo detectado -', dados.nome);
 
-        if (typeof window.showPrecheckPanel === 'function') {
-            window.showPrecheckPanel(dados);
+        if (typeof globalThis.showPrecheckPanel === 'function') {
+            globalThis.showPrecheckPanel(dados);
         } else {
             console.warn('CRM Extensão: Função showPrecheckPanel não disponível.');
         }
