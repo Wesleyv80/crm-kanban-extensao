@@ -721,6 +721,14 @@ function buildUI() {
         // Optionally, also check for 'crm-fab-container' if it should always co-exist.
         return;
     }
+
+  const app = document.getElementById("app");
+  if (app) {
+    app.style.transition = "all 0.2s ease";
+    app.style.marginRight = "60px";
+    app.style.width = "calc(100vw - 60px)";
+  }
+
     // Simple check for old FAB container to prevent multiple FABs if old logic hasn't been removed yet.
     if (document.getElementById('crm-fab-container')) {
         console.warn("buildUI: crm-fab-container already exists. Consider full cleanup if old sidebar logic is still present.");
