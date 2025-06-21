@@ -1208,3 +1208,63 @@ function capturarEPreencherDadosDoContato() {
 // is also removed by this change as it's no longer needed.
 
 buildUI();
+
+// 🔒 Oculta a barra lateral ao abrir CRM ou Cadastro
+document.getElementById("btn-crm")?.addEventListener("click", () => {
+  const barra = document.getElementById("barra-crm-direita");
+  if (barra) barra.style.display = "none";
+  abrirPainelCRM();
+});
+
+document.getElementById("btn-cadastro")?.addEventListener("click", () => {
+  const barra = document.getElementById("barra-crm-direita");
+  if (barra) barra.style.display = "none";
+  abrirPainelCadastro();
+});
+
+// 🔍 Campo de busca com ENTER, BACKSPACE/DELETE e botão ❌
+const campoBusca = document.getElementById("campo-busca-card");
+
+if (campoBusca) {
+  // Botão X dentro do campo
+  const botaoLimparBusca = document.createElement("span");
+  botaoLimparBusca.innerText = "❌";
+  botaoLimparBusca.style.cursor = "pointer";
+  botaoLimparBusca.style.marginLeft = "8px";
+  botaoLimparBusca.onclick = () => {
+    campoBusca.value = "";
+    exibirTodosOsCards();
+  };
+  campoBusca.parentNode?.appendChild(botaoLimparBusca);
+
+  campoBusca.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      filtrarCardsPorTexto(campoBusca.value);
+    } else if ((e.key === "Backspace" || e.key === "Delete") && campoBusca.value === "") {
+      exibirTodosOsCards();
+    }
+  });
+}
+
+// ❎ Botão para fechar o CRM
+const painelCRM = document.getElementById("painel-crm");
+if (painelCRM) {
+  const botaoFecharCRM = document.createElement("button");
+  botaoFecharCRM.innerText = "Fechar";
+  Object.assign(botaoFecharCRM.style, {
+    position: "absolute",
+    top: "10px",
+    right: "10px",
+    padding: "5px 10px",
+    background: "#ccc",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer"
+  });
+  botaoFecharCRM.onclick = () => {
+    painelCRM.style.display = "none";
+    const barra = document.getElementById("barra-crm-direita");
+    if (barra) barra.style.display = "flex";
+  };
+  painelCRM.appendChild(botaoFecharCRM);
+}
