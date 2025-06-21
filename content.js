@@ -1158,6 +1158,8 @@ console.log("UI do CRM injetada e eventos configurados com sucesso!");
 
 // --- MONITORAMENTO DE CONVERSAS NO WHATSAPP ---
 let currentMonitoredContact = null;
+let noContactFoundCount = 0; // Contador para detecção de ausência de contato
+const NO_CONTACT_THRESHOLD = 3; // Número de verificações antes de resetar currentMonitoredContact
 
 function iniciarMonitoramentoDeConversa() {
     console.log('CRM Extensão: Iniciando monitoramento de conversas...');
@@ -1183,12 +1185,32 @@ function iniciarMonitoramentoDeConversa() {
 function capturarEPreencherDadosDoContato() {
     try {
         const dados = observadorDeContato.capturarContatoAtivo();
-        if (!dados) return;
 
-        if (currentMonitoredContact === dados.nome) return;
-        currentMonitoredContact = dados.nome || null;
+        if (!dados || (!dados.nome && !dados.telefone)) { // Considera ausência se não houver nome nem telefone
+            noContactFoundCount++;
+            if (noContactFoundCount >= NO_CONTACT_THRESHOLD) {
+                if (currentMonitoredContact !== null) {
+                    console.log('CRM Extensão: Limite de tentativas sem contato atingido. Resetando contato monitorado.');
+                    currentMonitoredContact = null;
+                    // Poderia também fechar/limpar o painel de pré-visualização aqui, se desejado.
+                    // Ex: if (typeof window.hidePrecheckPanel === 'function') window.hidePrecheckPanel();
+                }
+                noContactFoundCount = 0; // Resetar contador após ação
+            }
+            return;
+        }
 
-        console.log('CRM Extensão: Novo contato ativo detectado -', dados.nome);
+        // Se dados válidos foram encontrados, reseta o contador de ausência
+        noContactFoundCount = 0;
+
+        // Usar uma combinação de nome e telefone para maior robustez na identificação única,
+        // já que apenas o nome pode não ser suficiente (ex: contatos com mesmo nome).
+        const contactIdentifier = (dados.nome || '') + (dados.telefone || '');
+
+        if (currentMonitoredContact === contactIdentifier) return;
+        currentMonitoredContact = contactIdentifier;
+
+        console.log('CRM Extensão: Novo contato ativo detectado -', dados.nome, dados.telefone);
 
         if (typeof window.showPrecheckPanel === 'function') {
             window.showPrecheckPanel(dados);
@@ -1207,96 +1229,82 @@ function capturarEPreencherDadosDoContato() {
 // The block of code that adjusted old buttons (`iconeCRM`, `iconeCadastro`, etc.)
 // is also removed by this change as it's no longer needed.
 
-buildUI();
-
-// 🔒 Oculta a barra lateral ao abrir CRM ou Cadastro
-// Correção: Selecionar os botões por title, pois não possuem IDs fixos.
-const btnCrm = document.querySelector('#barra-crm-direita button[title="Abrir CRM Kanban"]');
-const btnCadastro = document.querySelector('#barra-crm-direita button[title="Novo Cadastro"]');
-
-btnCrm?.addEventListener("click", () => {
-  const barra = document.getElementById("barra-crm-direita");
-  if (barra) barra.style.display = "none";
-  // A função original de abrir o painel CRM já é tratada pelo listener de clique original do botão.
-  // Não é necessário chamar abrirPainelCRM() aqui.
-});
-
-btnCadastro?.addEventListener("click", () => {
-  const barra = document.getElementById("barra-crm-direita");
-  if (barra) barra.style.display = "none";
-  // A função original de abrir o painel de cadastro já é tratada pelo listener de clique original do botão.
-  // Não é necessário chamar abrirPainelCadastro() aqui.
-});
-
-// 🔍 Campo de busca com ENTER, BACKSPACE/DELETE e botão ❌
-// Correção: ID correto do campo de busca e integração com botões existentes.
-const campoBusca = document.getElementById("kanban-search-input");
-
-if (campoBusca) {
-  // Botão X dentro do campo
-  const botaoLimparBusca = document.createElement("span");
-  botaoLimparBusca.innerText = "❌";
-  botaoLimparBusca.style.cursor = "pointer";
-  botaoLimparBusca.style.marginLeft = "8px"; // Estilo para posicionar ao lado do input ou dos botões existentes.
-                                          // Pode precisar de ajuste fino dependendo do layout desejado.
-  // Adiciona o botão ao mesmo container dos outros botões de busca para consistência.
-  const searchContainer = campoBusca.closest('.kanban-search');
-  if (searchContainer) {
-      // Insere antes do botão de busca existente para ficar entre o input e os botões.
-      // Ou appendChild para colocar no final.
-      searchContainer.insertBefore(botaoLimparBusca, document.getElementById('kanban-search-btn'));
-  } else {
-      campoBusca.parentNode?.appendChild(botaoLimparBusca); // Fallback
-  }
-
-  botaoLimparBusca.onclick = () => {
-    campoBusca.value = "";
-    // Correção: Simular clique no botão de limpar busca existente.
-    document.getElementById('kanban-search-clear')?.click();
-  };
-  // campoBusca.parentNode?.appendChild(botaoLimparBusca); // Movido para cima para melhor controle
-
-  campoBusca.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      // Correção: Simular clique no botão de busca existente.
-      document.getElementById('kanban-search-btn')?.click();
-    } else if ((e.key === "Backspace" || e.key === "Delete") && campoBusca.value.trim() === "") {
-      // Correção: Simular clique no botão de limpar busca existente.
-      // Também verificar com trim() para o caso de espaços.
-      document.getElementById('kanban-search-clear')?.click();
+// --- PONTO DE ENTRADA PRINCIPAL ---
+function inicializarExtensao() {
+    // Verifica se o elemento raiz já existe
+    if (document.getElementById('crm-extension-root')) {
+        console.log("CRM Kanban: Extensão já inicializada.");
+        return;
     }
-  });
+
+    // Cria o elemento raiz e o anexa ao body.
+    // Este elemento servirá como um marcador de que a extensão já foi inicializada.
+    const rootElement = document.createElement('div');
+    rootElement.id = 'crm-extension-root';
+    rootElement.style.display = 'none'; // Não precisa ser visível
+    document.body.appendChild(rootElement);
+
+    // Prossegue com a construção da UI e adição de listeners
+    buildUI();
+
+    // A lógica de adicionar listeners de eventos que estava solta no final do arquivo
+    // foi movida para dentro desta função `inicializarExtensao` para garantir
+    // que eles também sejam configurados apenas uma vez.
+
+    // 🔒 Oculta a barra lateral ao abrir CRM ou Cadastro
+    // Correção: Selecionar os botões por title, pois não possuem IDs fixos.
+    const btnCrm = document.querySelector('#barra-crm-direita button[title="Abrir CRM Kanban"]');
+    const btnCadastro = document.querySelector('#barra-crm-direita button[title="Novo Cadastro"]');
+
+    btnCrm?.addEventListener("click", () => {
+      const barra = document.getElementById("barra-crm-direita");
+      if (barra) barra.style.display = "none";
+    });
+
+    btnCadastro?.addEventListener("click", () => {
+      const barra = document.getElementById("barra-crm-direita");
+      if (barra) barra.style.display = "none";
+    });
+
+    // 🔍 Campo de busca com ENTER, BACKSPACE/DELETE e botão ❌
+    // Correção: ID correto do campo de busca e integração com botões existentes.
+    const campoBusca = document.getElementById("kanban-search-input");
+
+    if (campoBusca) {
+      const searchContainer = campoBusca.closest('.kanban-search');
+      const botaoLimparBuscaExistente = document.getElementById('kanban-search-clear'); // Usar o existente
+
+      // O botão de limpar programático foi removido. A lógica agora usa o existente.
+
+      campoBusca.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          document.getElementById('kanban-search-btn')?.click();
+        } else if ((e.key === "Backspace" || e.key === "Delete") && campoBusca.value.trim() === "") {
+          botaoLimparBuscaExistente?.click();
+        }
+      });
+    }
+
+    // ❎ Botão para fechar o CRM
+    // Correção: ID correto do painel CRM e método de ocultação.
+    // A criação programática do botão de fechar foi removida.
+    // O listener de evento será anexado ao botão existente em buildUI ou aqui, se necessário.
+    // Por ora, a lógica de fechar já está no .close-btn do kanban-header em buildUI.
+
+    console.log("CRM Kanban: Extensão inicializada e eventos configurados.");
 }
 
-// ❎ Botão para fechar o CRM
-// Correção: ID correto do painel CRM e método de ocultação.
-const painelCRM = document.getElementById("kanban-panel-container");
-if (painelCRM) {
-  const botaoFecharCRM = document.createElement("button");
-  botaoFecharCRM.innerText = "Fechar";
-  Object.assign(botaoFecharCRM.style, {
-    position: "absolute",
-    top: "10px",
-    right: "10px", // Este 'right' pode precisar ser ajustado se o painel tiver padding.
-                   // Ou pode ser relativo ao header do painel.
-    padding: "5px 10px",
-    background: "#ccc",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    zIndex: "1000" // Para garantir que fique sobre outros elementos no header.
-  });
-  botaoFecharCRM.onclick = () => {
-    // Correção: Usar classList.remove para ocultar o painel consistentemente.
-    painelCRM.classList.remove("visible");
-    const barra = document.getElementById("barra-crm-direita");
-    if (barra) barra.style.display = "flex"; // Mostrar a barra lateral direita novamente.
-  };
-  // Adicionar ao cabeçalho do painel para melhor posicionamento e semântica.
-  const kanbanHeader = painelCRM.querySelector(".kanban-header");
-  if (kanbanHeader) {
-      kanbanHeader.appendChild(botaoFecharCRM);
-  } else {
-      painelCRM.appendChild(botaoFecharCRM); // Fallback se o header não for encontrado.
-  }
-}
+// Inicia a extensão.
+inicializarExtensao();
+
+// A lógica de adicionar listeners para os botões de fechar e limpar busca
+// que eram criados programaticamente foi removida.
+// Os listeners para os botões existentes (`#kanban-search-clear` e `.close-btn` no header do Kanban)
+// são configurados dentro de `buildUI()`.
+
+// Exemplo de como os listeners existentes em buildUI() já cobrem a funcionalidade:
+// document.getElementById('kanban-search-clear').onclick = () => { ... }; // Já existe em buildUI
+// document.querySelector('#kanban-panel-container .close-btn').onclick = () => { ... }; // Já existe em buildUI
+
+// A lógica de evento de teclado para o campo de busca para simular cliques
+// nos botões de busca e limpar busca existentes permanece em `inicializarExtensao()`.
