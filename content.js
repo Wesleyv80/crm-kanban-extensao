@@ -1210,61 +1210,93 @@ function capturarEPreencherDadosDoContato() {
 buildUI();
 
 // 🔒 Oculta a barra lateral ao abrir CRM ou Cadastro
-document.getElementById("btn-crm")?.addEventListener("click", () => {
+// Correção: Selecionar os botões por title, pois não possuem IDs fixos.
+const btnCrm = document.querySelector('#barra-crm-direita button[title="Abrir CRM Kanban"]');
+const btnCadastro = document.querySelector('#barra-crm-direita button[title="Novo Cadastro"]');
+
+btnCrm?.addEventListener("click", () => {
   const barra = document.getElementById("barra-crm-direita");
   if (barra) barra.style.display = "none";
-  abrirPainelCRM();
+  // A função original de abrir o painel CRM já é tratada pelo listener de clique original do botão.
+  // Não é necessário chamar abrirPainelCRM() aqui.
 });
 
-document.getElementById("btn-cadastro")?.addEventListener("click", () => {
+btnCadastro?.addEventListener("click", () => {
   const barra = document.getElementById("barra-crm-direita");
   if (barra) barra.style.display = "none";
-  abrirPainelCadastro();
+  // A função original de abrir o painel de cadastro já é tratada pelo listener de clique original do botão.
+  // Não é necessário chamar abrirPainelCadastro() aqui.
 });
 
 // 🔍 Campo de busca com ENTER, BACKSPACE/DELETE e botão ❌
-const campoBusca = document.getElementById("campo-busca-card");
+// Correção: ID correto do campo de busca e integração com botões existentes.
+const campoBusca = document.getElementById("kanban-search-input");
 
 if (campoBusca) {
   // Botão X dentro do campo
   const botaoLimparBusca = document.createElement("span");
   botaoLimparBusca.innerText = "❌";
   botaoLimparBusca.style.cursor = "pointer";
-  botaoLimparBusca.style.marginLeft = "8px";
+  botaoLimparBusca.style.marginLeft = "8px"; // Estilo para posicionar ao lado do input ou dos botões existentes.
+                                          // Pode precisar de ajuste fino dependendo do layout desejado.
+  // Adiciona o botão ao mesmo container dos outros botões de busca para consistência.
+  const searchContainer = campoBusca.closest('.kanban-search');
+  if (searchContainer) {
+      // Insere antes do botão de busca existente para ficar entre o input e os botões.
+      // Ou appendChild para colocar no final.
+      searchContainer.insertBefore(botaoLimparBusca, document.getElementById('kanban-search-btn'));
+  } else {
+      campoBusca.parentNode?.appendChild(botaoLimparBusca); // Fallback
+  }
+
   botaoLimparBusca.onclick = () => {
     campoBusca.value = "";
-    exibirTodosOsCards();
+    // Correção: Simular clique no botão de limpar busca existente.
+    document.getElementById('kanban-search-clear')?.click();
   };
-  campoBusca.parentNode?.appendChild(botaoLimparBusca);
+  // campoBusca.parentNode?.appendChild(botaoLimparBusca); // Movido para cima para melhor controle
 
   campoBusca.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
-      filtrarCardsPorTexto(campoBusca.value);
-    } else if ((e.key === "Backspace" || e.key === "Delete") && campoBusca.value === "") {
-      exibirTodosOsCards();
+      // Correção: Simular clique no botão de busca existente.
+      document.getElementById('kanban-search-btn')?.click();
+    } else if ((e.key === "Backspace" || e.key === "Delete") && campoBusca.value.trim() === "") {
+      // Correção: Simular clique no botão de limpar busca existente.
+      // Também verificar com trim() para o caso de espaços.
+      document.getElementById('kanban-search-clear')?.click();
     }
   });
 }
 
 // ❎ Botão para fechar o CRM
-const painelCRM = document.getElementById("painel-crm");
+// Correção: ID correto do painel CRM e método de ocultação.
+const painelCRM = document.getElementById("kanban-panel-container");
 if (painelCRM) {
   const botaoFecharCRM = document.createElement("button");
   botaoFecharCRM.innerText = "Fechar";
   Object.assign(botaoFecharCRM.style, {
     position: "absolute",
     top: "10px",
-    right: "10px",
+    right: "10px", // Este 'right' pode precisar ser ajustado se o painel tiver padding.
+                   // Ou pode ser relativo ao header do painel.
     padding: "5px 10px",
     background: "#ccc",
     border: "none",
     borderRadius: "4px",
-    cursor: "pointer"
+    cursor: "pointer",
+    zIndex: "1000" // Para garantir que fique sobre outros elementos no header.
   });
   botaoFecharCRM.onclick = () => {
-    painelCRM.style.display = "none";
+    // Correção: Usar classList.remove para ocultar o painel consistentemente.
+    painelCRM.classList.remove("visible");
     const barra = document.getElementById("barra-crm-direita");
-    if (barra) barra.style.display = "flex";
+    if (barra) barra.style.display = "flex"; // Mostrar a barra lateral direita novamente.
   };
-  painelCRM.appendChild(botaoFecharCRM);
+  // Adicionar ao cabeçalho do painel para melhor posicionamento e semântica.
+  const kanbanHeader = painelCRM.querySelector(".kanban-header");
+  if (kanbanHeader) {
+      kanbanHeader.appendChild(botaoFecharCRM);
+  } else {
+      painelCRM.appendChild(botaoFecharCRM); // Fallback se o header não for encontrado.
+  }
 }
